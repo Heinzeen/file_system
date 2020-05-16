@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <assert.h>
+#include <sys/mman.h>
 
 /*
 // this is stored in the 1st block of the disk
@@ -68,6 +69,7 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
 	//paranoid mode
 	assert(disk && "[DiskDriver_init] Disk pointer not valid.");
 	assert(filename && "[DiskDriver_init] Disk's filename not valid.");
+	assert(num_blocks>0 && "[DiskDriver_init] Block num not valid.");
 
 
 	debug_print("Initializing the disk driver.");
@@ -78,7 +80,7 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
 	assert(dh && "[DiskDriver_init] Cannot allocate disk header.");
 
 	dh->num_blocks = num_blocks;					//TODO do we need the bitmap_blocks field?
-	dh->bitmap_entries = num_blocks * sizeof(BitMapEntryKey);
+	dh->bitmap_entries = num_blocks;
 	dh->free_blocks = num_blocks; 					//in the start, every block is a free block
 	dh->first_free_block = 0;
 	
@@ -92,7 +94,7 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
 
 	//opening the file
 	int disk_desc = open(filename, O_RDWR | O_CREAT, 0644);
-	check_errors(disk_desc, 0, "[DiskDriver_init] Cannot open descriptor.");
+	check_errors(disk_desc, -1, "[DiskDriver_init] Cannot open descriptor.");
 
 
 
@@ -107,16 +109,60 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
 
 }
 
+//TODO check if the disk exists and if it is "good"
+
+//open the disk driver, load everything from the file
+void DiskDriver_open(DiskDriver* disk, const char* filename, int num_blocks){
+	//paranoid mode
+	assert(disk && "[DiskDriver_open] Disk pointer not valid.");
+	assert(filename && "[DiskDriver_open] Disk's filename not valid.");
+	assert(num_blocks>0 && "[DiskDriver_open] Block num not valid.");
+
+	debug_print("Opening the disk.");
+
+	//opening the file
+	int disk_desc = open(filename, O_RDWR , 0644);
+	check_errors(disk_desc, -1, "[DiskDriver_open] Cannot open descriptor.");
+
+	//initialize the bitmap
+	BitMap* bitmap = malloc(sizeof(BitMap));	//size of the bitmap
+	assert(bitmap && "[DiskDriver_open] Cannot allocate bitmap.");
+	bitmap->num_bits = num_blocks;
+
+	//mmap the bitmap
+	bitmap->entries = mmap(0, num_blocks, PROT_READ | PROT_WRITE, MAP_SHARED, disk_desc, 0);
+	assert(bitmap->entries && "[DiskDriver_open] Cannot allocate bitmap.");
+
+	//initialize the header with its fields
+	DiskHeader* dh = malloc(sizeof(DiskHeader));
+	assert(dh && "[DiskDriver_init] Cannot allocate disk header.");
+
+	dh->num_blocks = num_blocks;					//TODO do we need the bitmap_blocks field?
+	dh->bitmap_entries = num_blocks;
+	dh->free_blocks = num_blocks; 					//in the start, every block is a free block
+	dh->first_free_block = 0;
+
+
+	//set the values
+	disk->header = dh;
+	disk->bitmap = bitmap;
+	disk->fd = disk_desc;
+
+
+}
 
 //close the disk driver, free the elements and close the descriptor
-void DiskDriver_close(DiskDriver* disk){
+void DiskDriver_close(DiskDriver* disk, int n){
 
 	//checking
 	assert(disk && "[DiskDriver_close] Disk pointer not valid.");
 
 	debug_print("Closing the disk driver.");
 
-	BitMap_close(disk->bitmap);
+	if (n)					//check if the bitmap was allocated or mapped (n stands for new)
+		BitMap_free(disk->bitmap);
+	else
+		BitMap_unmap(disk->bitmap);
 
 	//closing the file
 	int ret = close(disk->fd);
@@ -125,7 +171,7 @@ void DiskDriver_close(DiskDriver* disk){
 	//freeing the memory
 	assert(disk->header && "[DiskDriver_close] Disk header value is not valid.");
 	free(disk->header);
-	assert(disk->bitmap && "[DiskDriver_close] Disk header value is not valid.");
+	assert(disk->bitmap && "[DiskDriver_close] Disk bitmap value is not valid.");
 	free(disk->bitmap);
 
 }
@@ -139,7 +185,7 @@ int DiskDriver_readBlock(DiskDriver* disk, void* dest, int block_num){
 	
 	//checking
 	assert(disk && "[DiskDriver_readBlock] Disk pointer not valid.");
-	assert(block_num>=0 && "[DiskDriver_readBlock] Invalid block num");
+	assert(block_num>0 && "[DiskDriver_readBlock] Invalid block num");
 	
 	return 0;	//placeholder
 

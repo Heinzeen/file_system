@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <string.h> //memset
 #include "auxiliary.h"
+#include <sys/mman.h>
 
 
 typedef struct{
@@ -19,8 +20,11 @@ typedef struct {
 // initialize a bitmap
 void BitMap_init(BitMap* bmap);
 
-// close a bitmap
-void BitMap_close(BitMap* bmap);
+// close a bitmap that dinamically allocated
+void BitMap_free(BitMap* bmap);
+
+// close a bitmap that was mapped
+void BitMap_unmap(BitMap* bmap);
 
 // converts a block index to an index in the array,
 // and a char that indicates the offset of the bit inside the array

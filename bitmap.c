@@ -28,7 +28,7 @@ void BitMap_init(BitMap* bmap){
 	assert(bmap->entries && "[BitMap_init] Cannot set the bitmap's entries to 0.");
 }
 
-void BitMap_close(BitMap* bmap){
+void BitMap_free(BitMap* bmap){
 	//checking
 	assert(bmap && "[BitMap_close] Bmap pointer not valid.");
 
@@ -36,5 +36,16 @@ void BitMap_close(BitMap* bmap){
 	//freeing the memory
 	assert(bmap->entries && "[DiskDriver_close] Disk header value is not valid.");
 	free(bmap->entries);
+
+}
+
+void BitMap_unmap(BitMap* bmap){
+	//checking
+	assert(bmap && "[BitMap_close] Bmap pointer not valid.");
+
+
+	//freeing the memory
+	assert(bmap->entries && "[DiskDriver_close] Disk header value is not valid.");
+	munmap(bmap->entries, bmap->num_bits);
 
 }

@@ -15,7 +15,12 @@ int main(int agc, char** argv) {
 
 	DiskDriver_init(disk0, "disk0.dat", 1024);
 
-	DiskDriver_close(disk0);
+	DiskDriver_close(disk0, 1);
+
+
+	DiskDriver_open(disk0, "disk0.dat", 1024);
+
+	DiskDriver_close(disk0, 0);
 
 	free(disk0);
 

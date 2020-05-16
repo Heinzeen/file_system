@@ -33,7 +33,10 @@ typedef struct {
 void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks);
 
 //close the disk driver, free the elements and close the descriptor
-void DiskDriver_close(DiskDriver* disk);
+void DiskDriver_close(DiskDriver* disk, int n);
+
+//open the disk driver, load everything from the file
+void DiskDriver_open(DiskDriver* disk, const char* filename, int num_blocks);
 
 // reads the block in position block_num
 // returns -1 if the block is free accrding to the bitmap
