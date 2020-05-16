@@ -109,7 +109,7 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
 
 }
 
-//TODO check if the disk exists and if it is "good"
+//TODO check if the disk is "good"
 
 //open the disk driver, load everything from the file
 void DiskDriver_open(DiskDriver* disk, const char* filename, int num_blocks){
@@ -137,9 +137,9 @@ void DiskDriver_open(DiskDriver* disk, const char* filename, int num_blocks){
 	DiskHeader* dh = malloc(sizeof(DiskHeader));
 	assert(dh && "[DiskDriver_init] Cannot allocate disk header.");
 
-	dh->num_blocks = num_blocks;					//TODO do we need the bitmap_blocks field?
+	dh->num_blocks = num_blocks;						//TODO do we need the bitmap_blocks field?
 	dh->bitmap_entries = num_blocks;
-	dh->free_blocks = num_blocks; 					//in the start, every block is a free block
+	dh->free_blocks = BitMap_analyze(bitmap, num_blocks);		//in the start, every block is a free block
 	dh->first_free_block = 0;
 
 
@@ -217,7 +217,7 @@ int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num){		//TODO i
 
 	memcpy(dest + offset, src, BLOCK_SIZE);
 
-	disk->bitmap->entries[block_num] |= 1;
+	disk->bitmap->entries[block_num] = 1;
 
 	DiskDriver_unmapBlock(dest);
 	return 0;
@@ -228,4 +228,45 @@ void DiskDriver_unmapBlock(void* ptr){
 	//checking
 	assert(ptr && "[DiskDriver_unmapBlock] Block's pointer not valid.");
 	munmap(ptr, BLOCK_SIZE);
+}
+
+
+//TODO do I have to do anything else?
+// frees a block in position block_num, and alters the bitmap accordingly
+// returns -1 if operation not possible
+int DiskDriver_freeBlock(DiskDriver* disk, int block_num){
+	//checking
+	assert(disk && "[DiskDriver_freeBlock] Disk pointer not valid.");
+	if(block_num<=0)
+		return -1;
+
+
+	//change the bitmap and add 1 to the number of free items
+	disk->bitmap->entries[block_num] = 0;
+	disk->header->free_blocks += 1;
+	return 0;
+}
+
+// returns the first free blockin the disk from position (checking the bitmap)
+// or -1 if there is no block from that position
+int DiskDriver_getFreeBlock(DiskDriver* disk, int start){
+	//checking
+	assert(disk && "[DiskDriver_freeBlock] Disk pointer not valid.");
+
+	//iterate untill we find a block
+	int i;
+	if(start == 0)
+		start = 1;	//we don't want to check root
+	for(i=start; i< disk->header->num_blocks; i++){
+		if(disk->bitmap->entries[i] == 0)
+			break;
+	}
+	//check if the cycle didn't end because we run out of blocks
+	if(i == disk->header->num_blocks)
+		return -1;
+
+	//modify the bitmap
+	disk->bitmap->entries[i] = 1;
+	disk->header->free_blocks -= 1;
+	return i;
 }

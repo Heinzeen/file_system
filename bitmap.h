@@ -26,6 +26,9 @@ void BitMap_free(BitMap* bmap);
 // close a bitmap that was mapped
 void BitMap_unmap(BitMap* bmap);
 
+//check how many blocks are in use
+int BitMap_analyze(BitMap* bmap, int num_blocks);
+
 // converts a block index to an index in the array,
 // and a char that indicates the offset of the bit inside the array
 BitMapEntryKey BitMap_blockToIndex(int num);

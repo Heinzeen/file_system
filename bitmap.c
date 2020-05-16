@@ -39,6 +39,23 @@ void BitMap_free(BitMap* bmap){
 
 }
 
+//check how many blocks are in use
+int BitMap_analyze(BitMap* bmap, int num_blocks){
+	//checking
+	assert(bmap && "[BitMap_analyze] Bmap pointer not valid.");
+	assert(num_blocks > 0 && "[BitMap_analyze] Bmap pointer not valid.");
+
+	//iterate through the bitmap and check for the values
+	int i;
+	for(i=0; i<num_blocks; i++){
+		assert((bmap->entries[i] == 0 || bmap->entries[i] == 1) && "[BitMap_analyze] Bad bitmap.");
+		num_blocks -= bmap->entries[i];
+	}
+	return num_blocks;
+
+}
+
+
 void BitMap_unmap(BitMap* bmap){
 	//checking
 	assert(bmap && "[BitMap_close] Bmap pointer not valid.");
