@@ -1,5 +1,11 @@
 #pragma once
 #include <stdint.h>
+#include <stdlib.h>
+#include <assert.h>
+#include <string.h> //memset
+#include "auxiliary.h"
+
+
 typedef struct{
   int num_bits;
   char* entries;
@@ -9,6 +15,12 @@ typedef struct {
   int entry_num;
   char bit_num;
 } BitMapEntryKey;
+
+// initialize a bitmap
+void BitMap_init(BitMap* bmap);
+
+// close a bitmap
+void BitMap_close(BitMap* bmap);
 
 // converts a block index to an index in the array,
 // and a char that indicates the offset of the bit inside the array

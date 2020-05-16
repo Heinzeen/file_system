@@ -6,11 +6,15 @@ AR=ar
 
 BINS= simplefs_test
 
-OBJS = #add here your object files
+OBJS = simplefs.o\
+	bitmap.o\
+	disk_driver.o\
+	auxiliary.o
 
 HEADERS=bitmap.h\
 	disk_driver.h\
-	simplefs.h
+	simplefs.h\
+	linked_list.h
 
 %.o:	%.c $(HEADERS)
 	$(CC) $(CCOPTS) -c -o $@  $<
