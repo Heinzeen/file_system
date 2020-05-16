@@ -11,11 +11,11 @@
 // this is stored in the 1st block of the disk
 typedef struct {
 	int num_blocks;
-	int bitmap_blocks;	 // how many blocks in the bitmap
+	int bitmap_blocks;	// how many blocks in the bitmap
 	int bitmap_entries;	// how many bytes are needed to store the bitmap
 	
-	int free_blocks;		 // free blocks
-	int first_free_block;// first block index
+	int free_blocks		// free blocks
+	int first_free_block;	// first block index
 } DiskHeader; 
 
 typedef struct {
@@ -131,7 +131,7 @@ void DiskDriver_open(DiskDriver* disk, const char* filename, int num_blocks){
 
 	//mmap the bitmap
 	bitmap->entries = mmap(0, num_blocks, PROT_READ | PROT_WRITE, MAP_SHARED, disk_desc, 0);
-	assert(bitmap->entries && "[DiskDriver_open] Cannot allocate bitmap.");
+	check_errors((long int)bitmap->entries, -1, "[DiskDriver_open] Cannot map bitmap.");
 
 	//initialize the header with its fields
 	DiskHeader* dh = malloc(sizeof(DiskHeader));
@@ -177,19 +177,55 @@ void DiskDriver_close(DiskDriver* disk, int n){
 }
 
 
-
-// reads the block in position block_num
-// returns -1 if the block is free accrding to the bitmap
-// 0 otherwise
-int DiskDriver_readBlock(DiskDriver* disk, void* dest, int block_num){
+//TODO check the method I use to take the offset for the mmap, it won't work with some page_len and BLOCK_SIZEs
+// reads the block in position block_num (map it into the process)
+char* DiskDriver_readBlock(DiskDriver* disk, int block_num){
 	
 	//checking
 	assert(disk && "[DiskDriver_readBlock] Disk pointer not valid.");
 	assert(block_num>0 && "[DiskDriver_readBlock] Invalid block num");
+
+
+	//we need to do some math because we can only set an offsett which is a multiple of sysconf(_SC_PAGE_SIZE)
+	int page_len = sysconf(_SC_PAGE_SIZE);
 	
-	return 0;	//placeholder
+	int offset = disk->header->num_blocks + BLOCK_SIZE*block_num;
+	char* dest = mmap(0, (offset % page_len) + BLOCK_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, disk->fd, offset / page_len);
+	check_errors((long int)dest, -1, "[DiskDriver_readBlock] Cannot map the block.");
+
+	return dest + offset;
+
+}
+
+//TODO check the method I use to take the offset for the mmap, it won't work with some page_len and BLOCK_SIZEs
+// writes a block in position block_num, and alters the bitmap accordingly
+// returns -1 if operation not possible
+int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num){		//TODO is there any case i cannot do that? (for the -1 retval)
+	
+	//checking
+	assert(disk && "[DiskDriver_writeBlock] Disk pointer not valid.");
+	assert(block_num>0 && "[DiskDriver_writeBlock] Invalid block num");
 
 
+	//we need to do some math because we can only set an offsett which is a multiple of sysconf(_SC_PAGE_SIZE)
+	int page_len = sysconf(_SC_PAGE_SIZE);
+	
+	int offset = disk->header->num_blocks + BLOCK_SIZE*block_num;
+	char* dest = mmap(0, (offset % page_len) + BLOCK_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, disk->fd, (offset / page_len) * page_len);
+	check_errors((long int)dest, -1, "[DiskDriver_writeBlock] Cannot map the block.");
 
 
+	memcpy(dest + offset, src, BLOCK_SIZE);
+
+	disk->bitmap->entries[block_num] |= 1;
+
+	DiskDriver_unmapBlock(dest);
+	return 0;
+}
+
+// unmap a block
+void DiskDriver_unmapBlock(void* ptr){
+	//checking
+	assert(ptr && "[DiskDriver_unmapBlock] Block's pointer not valid.");
+	munmap(ptr, BLOCK_SIZE);
 }
