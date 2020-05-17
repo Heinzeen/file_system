@@ -1,6 +1,14 @@
 #pragma once
 #include "bitmap.h"
 #include "auxiliary.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+#include <assert.h>
+#include <sys/mman.h>
+
 
 #define BLOCK_SIZE 512
 // this is stored in the 1st block of the disk
@@ -17,6 +25,7 @@ typedef struct {
 	DiskHeader* header; // mmapped
 	BitMap* bitmap;	// mmapped (bitmap)
 	int fd; // for us
+	char* name;
 } DiskDriver;
 
 /**
@@ -41,11 +50,11 @@ void DiskDriver_open(DiskDriver* disk, const char* filename, int num_blocks);
 // reads the block in position block_num
 // returns -1 if the block is free accrding to the bitmap
 // 0 otherwise
-char* DiskDriver_readBlock(DiskDriver* disk, int block_num);
+char* DiskDriver_readBlock(DiskDriver* disk, int block_num, int block_offset);
 
 // writes a block in position block_num, and alters the bitmap accordingly
 // returns -1 if operation not possible
-int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num);
+int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num, int count, int block_offset);
 
 // frees a block in position block_num, and alters the bitmap accordingly
 // returns -1 if operation not possible

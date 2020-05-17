@@ -14,7 +14,36 @@ int main(int agc, char** argv) {
 
 	DiskDriver* disk0 = malloc(sizeof(DiskDriver));
 
+
 	//restore the disk
+	DiskDriver_init(disk0, "disk0.dat", 1024);
+	DiskDriver_close(disk0, 1);
+
+	//reopen it
+	DiskDriver_open(disk0, "disk0.dat", 1024);
+	SimpleFS* fs0 = malloc(sizeof(SimpleFS));
+
+	int res = SimpleFS_init(fs0, disk0);
+
+	if (res == -1){
+		printf("male male");
+		return 1;
+	}
+
+	res = SimpleFS_open(fs0, disk0);
+	if (res == -1){
+		printf("male male");
+		return 1;
+	}
+
+	DiskDriver_close(disk0, 0);
+	free(fs0);
+	free(disk0);
+
+	return 0;
+}
+
+/*	//restore the disk
 	//DiskDriver_init(disk0, "disk0.dat", 1024);
 	//DiskDriver_close(disk0, 1);
 
@@ -30,6 +59,8 @@ int main(int agc, char** argv) {
 		printf("No buono\n");
 
 	DiskDriver_writeBlock(disk0, temp, b1);
+
+	memset(temp, 0xbb, BLOCK_SIZE);
 
 	int b2 = DiskDriver_getFreeBlock(disk0, 0);
 	if( b2 == -1)
@@ -54,9 +85,4 @@ int main(int agc, char** argv) {
 		printf("%d ", temp2[i]);
 	printf("\n");
 	DiskDriver_close(disk0, 0);
-
-
-	free(disk0);
-
-	return 0;
-}
+*/
