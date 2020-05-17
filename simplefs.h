@@ -64,9 +64,7 @@ typedef struct {
 
 	
 typedef struct {
-	DiskDriver* disk;
-	int root_block;
-	int current_dir_block;
+	DiskDriver* disk;;
 	// add more fields if needed
 } SimpleFS;
 
@@ -94,7 +92,7 @@ int SimpleFS_init(SimpleFS* fs, DiskDriver* disk);
 
 // open an already made filse system
 // returns 0 if everything is fine, and if the fs is good
-int SimpleFS_open(SimpleFS* fs, DiskDriver* disk);
+DirectoryHandle* SimpleFS_open(SimpleFS* fs, DiskDriver* disk);
 
 // creates the inital structures, the top level directory
 // has name "/" and its control block is in the first position

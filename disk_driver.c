@@ -77,7 +77,12 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
 	dh->bitmap_entries = num_blocks;
 	dh->free_blocks = num_blocks; 					//in the start, every block is a free block
 	dh->first_free_block = 0;
-	
+
+	//initialize the BlockHeader
+	LoadedBlockHead* bh = malloc(sizeof(LoadedBlockHead));
+	bh->first = 0;
+	bh->last = 0;
+	bh->size = 0;
 	
 	//initialize the bitmap
 	BitMap* bitmap = malloc(sizeof(BitMap));	//size of the bitmap
@@ -97,6 +102,7 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
 	disk->bitmap = bitmap;
 	disk->fd = disk_desc;
 	disk->name = filename;
+	disk->blockhead = bh;
 
 
 	//init the disk, all 0 at the moment
@@ -137,12 +143,19 @@ void DiskDriver_open(DiskDriver* disk, const char* filename, int num_blocks){
 	dh->free_blocks = BitMap_analyze(bitmap, num_blocks);		//in the start, every block is a free block
 	dh->first_free_block = 0;
 
+	//initialize the BlockHeader
+	LoadedBlockHead* bh = malloc(sizeof(LoadedBlockHead));
+	bh->first = 0;
+	bh->last = 0;
+	bh->size = 0;
+
 
 	//set the values
 	disk->header = dh;
 	disk->bitmap = bitmap;
 	disk->fd = disk_desc;
 	disk->name = filename;
+	disk->blockhead = bh;
 
 
 }
@@ -163,12 +176,16 @@ void DiskDriver_close(DiskDriver* disk, int n){
 	//closing the file
 	int ret = close(disk->fd);
 	check_errors(ret, -1, "[DiskDriver_close] Cannot close the descriptor.");
+
+	DiskDriver_flush(disk);
 	
 	//freeing the memory
 	assert(disk->header && "[DiskDriver_close] Disk header value is not valid.");
 	free(disk->header);
 	assert(disk->bitmap && "[DiskDriver_close] Disk bitmap value is not valid.");
 	free(disk->bitmap);
+	assert(disk->blockhead && "[DiskDriver_close] Disk blockhead value is not valid.");
+	free(disk->blockhead);
 
 }
 
@@ -183,14 +200,9 @@ char* DiskDriver_readBlock(DiskDriver* disk, int block_num, int block_offset){
 	assert(block_offset <= BLOCK_SIZE && block_offset >= 0 && "[DiskDriver_readBlock] Invalid count or block_offset.");
 
 
-	//we need to do some math because we can only set an offsett which is a multiple of sysconf(_SC_PAGE_SIZE)
-	int page_len = sysconf(_SC_PAGE_SIZE);
-	
-	int offset = disk->header->num_blocks + BLOCK_SIZE*block_num;
-	char* dest = mmap(0, (offset % page_len) + BLOCK_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, disk->fd, offset / page_len);
-	check_errors((long int)dest, -1, "[DiskDriver_readBlock] Cannot map the block.");
+	char *dest = getBlockAddress(disk, block_num);
 
-	return dest + offset + block_offset;
+	return dest + block_offset;
 
 }
 
@@ -205,20 +217,14 @@ int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num, int count,
 	assert(count + block_offset <= BLOCK_SIZE && count > 0 && block_offset >= 0 && "[DiskDriver_writeBlock] Invalid count or block_offset.");
 
 
-	//we need to do some math because we can only set an offsett which is a multiple of sysconf(_SC_PAGE_SIZE)
-	int page_len = sysconf(_SC_PAGE_SIZE);
-	
-	int offset = disk->header->num_blocks + BLOCK_SIZE*block_num;
-	//printf("%d %d\n",(offset % page_len) + BLOCK_SIZE,  (offset / page_len) * page_len);
-	char* dest = mmap(0, (offset % page_len) + BLOCK_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, disk->fd, (offset / page_len) * page_len);
-	check_errors((long int)dest, -1, "[DiskDriver_writeBlock] Cannot map the block.");
 
+	//get the block address
+	char *dest = getBlockAddress(disk, block_num);
 
-	memcpy(dest + offset + block_offset, src, count);
+	memcpy(dest + block_offset, src, count);
 
 	disk->bitmap->entries[block_num] = 1;
 
-	DiskDriver_unmapBlock(dest);
 	return 0;
 }
 
@@ -226,9 +232,22 @@ int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num, int count,
 void DiskDriver_unmapBlock(void* ptr){
 	//checking
 	assert(ptr && "[DiskDriver_unmapBlock] Block's pointer not valid.");
-	munmap(ptr, BLOCK_SIZE);
+	munmap(ptr, sysconf(_SC_PAGE_SIZE));
 }
 
+// writes the data (flushing the mmaps)
+void DiskDriver_flush(DiskDriver* disk){
+	//checking
+	assert(disk && "[DiskDriver_flush] Disk pointer not valid.");
+	LoadedBlockHead* bh = disk->blockhead;
+	LoadedBlock* temp = bh->first;
+	while(temp){
+		DiskDriver_unmapBlock(temp->memory);
+		LoadedBlock* temp1 = temp;
+		temp = temp->next;
+		free(temp1);
+	}
+}
 
 //TODO do I have to do anything else?
 // frees a block in position block_num, and alters the bitmap accordingly
@@ -268,4 +287,86 @@ int DiskDriver_getFreeBlock(DiskDriver* disk, int start){
 	disk->bitmap->entries[i] = 1;
 	disk->header->free_blocks -= 1;
 	return i;
+}
+
+
+// TODO we get an offset for random reason (+0x200)
+void* getBlockAddress(DiskDriver* disk, int block_num){
+	//we need to do some math because we can only set an offsett which is a multiple of sysconf(_SC_PAGE_SIZE)
+	int page_len = sysconf(_SC_PAGE_SIZE);
+	
+
+	//check if we already mapped that portion of memory
+	LoadedBlock* temp = disk->blockhead->first;
+	while(temp){
+		if(block_num >= temp->block_start && block_num <= temp->block_end){
+			if(temp->block_start == 0)
+				return temp->memory + (block_num - temp->block_start) * BLOCK_SIZE + disk->header->num_blocks;
+
+			else				//used because we have an offset (bitmap) in the first block
+				return temp->memory + (block_num - temp->block_start) * BLOCK_SIZE;
+
+		}
+		temp = temp->next;
+	}
+
+
+	//since it was not already mapped, map it
+
+	LoadedBlock* lb = malloc(sizeof(LoadedBlock));
+	lb->prev = 0;
+	lb->next = 0;
+	lb->block_start = (block_num + (disk->header->num_blocks / BLOCK_SIZE)) / (page_len / BLOCK_SIZE) * (page_len / BLOCK_SIZE);
+	if(lb->block_start != 0)
+		lb->block_start -= (disk->header->num_blocks / BLOCK_SIZE);			//TODO non funziona con bitmap molto grandi (oltre 4096, esce fuori da page size)
+	lb->block_end = (block_num + (disk->header->num_blocks / BLOCK_SIZE)) / (page_len / BLOCK_SIZE) * (page_len/ BLOCK_SIZE) + (page_len / BLOCK_SIZE) - 1 - (disk->header->num_blocks / BLOCK_SIZE);
+
+	int offset;
+	if(block_num < page_len/BLOCK_SIZE - (disk->header->num_blocks / BLOCK_SIZE))
+		offset = disk->header->num_blocks + BLOCK_SIZE*block_num;
+	else
+		offset = BLOCK_SIZE*(block_num- lb->block_start);
+
+	
+	char* dest = mmap(0, page_len, PROT_READ | PROT_WRITE, MAP_SHARED, disk->fd, ((block_num * BLOCK_SIZE + disk->header->num_blocks) / page_len) * page_len);
+	check_errors((long int)dest, -1, "[getBlockAddress] Cannot map the block.");
+
+	lb->memory = dest;
+
+
+	offset %= page_len;
+
+	//and add it to our list
+
+	//if it is the first one
+	temp = disk->blockhead->first;
+	if(temp == 0){
+		disk->blockhead->first = lb;
+		disk->blockhead->last = lb;
+		return dest + offset;
+	}
+
+	//if we have to add it in the middle
+	while(temp){
+		if(lb->block_end < temp->block_start){
+			lb->next = temp;
+			lb->prev = temp->prev;
+			if(temp->prev == 0)
+				disk->blockhead->first = lb;
+			else
+				temp->prev->next = lb;
+			temp->prev = lb;
+			return dest + offset;
+		}
+		temp = temp->next;		
+	}
+	//if we are here, we reached the end of the list
+	temp = disk->blockhead->last;
+	temp->next = lb;
+	lb->prev = temp;
+	lb->next = 0;
+	disk->blockhead->last = lb;
+	return dest + offset;
+
+
 }

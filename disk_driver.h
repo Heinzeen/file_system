@@ -21,11 +21,26 @@ typedef struct {
 	int first_free_block;// first block index
 } DiskHeader; 
 
+typedef struct LoadedBlock{
+	struct LoadedBlock* prev;
+	struct LoadedBlock* next;
+	char* memory;
+	int block_start;
+	int block_end;
+} LoadedBlock;
+
+typedef struct LoadedBlockHead {
+	LoadedBlock* first;
+	LoadedBlock* last;
+	int size;
+} LoadedBlockHead;
+
 typedef struct {
 	DiskHeader* header; // mmapped
 	BitMap* bitmap;	// mmapped (bitmap)
 	int fd; // for us
-	char* name;
+	const char* name;
+	struct LoadedBlockHead* blockhead;
 } DiskDriver;
 
 /**
@@ -67,4 +82,8 @@ int DiskDriver_getFreeBlock(DiskDriver* disk, int start);
 void DiskDriver_unmapBlock(void* ptr);
 
 // writes the data (flushing the mmaps)
-int DiskDriver_flush(DiskDriver* disk);
+void DiskDriver_flush(DiskDriver* disk);
+
+
+// blocks management
+void* getBlockAddress(DiskDriver* disk, int block_num);
