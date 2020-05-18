@@ -1,6 +1,7 @@
 #pragma once
 #include "bitmap.h"
 #include "disk_driver.h"
+#include "auxiliary.h"
 
 /*these are structures stored on disk*/
 
@@ -47,16 +48,19 @@ typedef struct {
 	BlockHeader header;
 	FileControlBlock fcb;
 	int num_entries;
+	int room;
 	int file_blocks[ (BLOCK_SIZE
 			-sizeof(BlockHeader)
 			-sizeof(FileControlBlock)
-			-sizeof(int))/sizeof(int) ];
+			-2*sizeof(int))/sizeof(int) ];
 } FirstDirectoryBlock;
 
 // this is remainder block of a directory
 typedef struct {
 	BlockHeader header;
-	int file_blocks[ (BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int) ];
+	int room;
+	int num_entries;
+	int file_blocks[ (BLOCK_SIZE-sizeof(BlockHeader)-2*sizeof(int))/sizeof(int) ];
 } DirectoryBlock;
 /******************* stuff on disk END *******************/
 
@@ -114,6 +118,8 @@ int SimpleFS_readDir(char** names, DirectoryHandle* d);
 // opens a file in the	directory d. The file should be exisiting
 FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename);
 
+//prints all the elements about a file
+void SimpleFS_printFileData(FileHandle* f);
 
 // closes a file handle (destroyes it)
 int SimpleFS_close(FileHandle* f);
@@ -141,7 +147,10 @@ int SimpleFS_seek(FileHandle* f, int pos);
 // creates a new directory in the current one (stored in fs->current_directory_block)
 // 0 on success
 // -1 on error
-int SimpleFS_mkDir(DirectoryHandle* d, char* dirname);
+DirectoryHandle* SimpleFS_mkDir(DirectoryHandle* d, char* dirname);
+
+//close a dir handler
+int SimpleFS_closedir(DirectoryHandle* d);
 
 // removes the file in the current directory
 // returns -1 on failure 0 on success
