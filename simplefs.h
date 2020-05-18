@@ -15,6 +15,7 @@ typedef struct {
 
 // this is in the first block of a chain, after the header
 typedef struct {
+	int first_block;
 	int directory_block; // first block of the parent directory
 	int block_in_disk;	 // repeated position of the block on the disk
 	char name[128];

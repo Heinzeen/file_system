@@ -5,13 +5,58 @@
 
 
 int main(int agc, char** argv) {
-/*
-	printf("FirstBlock size %ld\n", sizeof(FirstFileBlock));
-	printf("DataBlock size %ld\n", sizeof(FileBlock));
-	printf("FirstDirectoryBlock size %ld\n", sizeof(FirstDirectoryBlock));
-	printf("DirectoryBlock size %ld\n", sizeof(DirectoryBlock));
-*/
+	DiskDriver* disk0 = malloc(sizeof(DiskDriver));
+	SimpleFS* sfs = malloc(sizeof(SimpleFS));
 
+	//==============================
+	//restore the disk
+	DiskDriver_init(disk0, "disk0.dat", 1024);
+	DiskDriver_close(disk0, 1);
+
+	DiskDriver_open(disk0, "disk0.dat", 1024);
+
+	SimpleFS_init(sfs, disk0);
+	
+	DirectoryHandle* rh = SimpleFS_open(sfs, disk0);
+
+	printf("Root name: %s\n", rh->dcb->fcb.name);
+	printf("Current number of elements %d\n", rh->dcb->num_entries);
+
+	printf("creating file in root\n");
+	FileHandle* f0 = SimpleFS_createFile(rh, "f0.txt");
+
+	//checking
+	printf("file created in: %s\n", f0->directory->fcb.name);
+	printf("Current number of elements %d\n", rh->dcb->num_entries);
+
+	printf("creating file in root\n");
+	FileHandle* f1 = SimpleFS_createFile(rh, "f1.txt");
+
+	//checking
+	if(f1!=0){
+		printf("file created in: %s\n", f1->directory->fcb.name);
+		printf("Current number of elements %d\n", rh->dcb->num_entries);
+	}
+
+	printf("creating file in root\n");
+	FileHandle* f2 = SimpleFS_createFile(rh, "f1.txt");
+
+	//checking
+	if(f2!=0){
+		printf("file created in: %s\n", f2->directory->fcb.name);
+		printf("Current number of elements %d\n", rh->dcb->num_entries);
+	}
+	DiskDriver_close(disk0, 0);
+
+	free(rh);
+	free(f0);
+	//=============================
+	free(sfs);
+	free(disk0);
+	return 0;
+}
+
+/*
 	DiskDriver* disk0 = malloc(sizeof(DiskDriver));
 	
 	//==============================
@@ -53,4 +98,4 @@ int main(int agc, char** argv) {
 	free(disk0);
 
 	return 0;
-}
+*/
