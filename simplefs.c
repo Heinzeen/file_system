@@ -121,8 +121,8 @@ int SimpleFS_addtodir(DirectoryHandle* d, int block){
 	//check if we have space in this block
 	if(d->dcb->room > 0){
 		//debugging print
-		char msg[32];
-		sprintf(msg, "Adding block %d to root block.", block);
+		char msg[64];
+		sprintf(msg, "Adding block %d to block %d (main).", block, d->dcb->fcb.first_block);
 		debug_print(msg);
 		d->dcb->num_entries += 1;
 		d->dcb->room -= 1;
@@ -214,13 +214,6 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename){
 	//write on disk
 	DiskDriver_writeBlock(d->sfs->disk, &ffb, block, sizeof(FirstFileBlock), 0);
 
-	//create the file handler
-	FileHandle* fh = malloc(sizeof(FileHandle));
-	fh->sfs = d->sfs;
-	fh->fcb = (FirstFileBlock*)DiskDriver_readBlock(d->sfs->disk, block, 0);
-	fh->directory = d->dcb;
-	fh->current_block = (BlockHeader*)DiskDriver_readBlock(d->sfs->disk, block, 0);
-	fh->pos_in_file = 0;
 	
 	//add it to the directory
 	int res = SimpleFS_addtodir(d, block);
@@ -230,6 +223,13 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename){
 	res = DiskDriver_writeBlock(d->sfs->disk, d->dcb, 0, sizeof(FirstDirectoryBlock), 0);
 	check_errors(res , -1, "[SimpleFS_createFile] Cannot write the block.");
 
+	//create the file handler
+	FileHandle* fh = malloc(sizeof(FileHandle));
+	fh->sfs = d->sfs;
+	fh->fcb = (FirstFileBlock*)DiskDriver_readBlock(d->sfs->disk, block, 0);
+	fh->directory = d->dcb;
+	fh->current_block = (BlockHeader*)DiskDriver_readBlock(d->sfs->disk, block, 0);
+	fh->pos_in_file = 0;
 
 	return fh;
 }
@@ -275,6 +275,14 @@ DirectoryHandle* SimpleFS_mkDir(DirectoryHandle* d, char* dirname){		//many part
 	//write on disk
 	DiskDriver_writeBlock(d->sfs->disk, &fdb, block, sizeof(FirstDirectoryBlock), 0);
 
+	//add it to the directory
+	int res = SimpleFS_addtodir(d, block);
+	check_errors(res , -1, "[SimpleFS_mkDir] Cannot add to dir.");
+
+	//save the new things on the dir's block
+	res = DiskDriver_writeBlock(d->sfs->disk, d->dcb, 0, sizeof(FirstDirectoryBlock), 0);
+	check_errors(res , -1, "[SimpleFS_mkDir] Cannot write the block.");
+
 	//create the directory handler
 	DirectoryHandle* dh = malloc(sizeof(FileHandle));
 	dh->sfs = d->sfs;
@@ -284,14 +292,6 @@ DirectoryHandle* SimpleFS_mkDir(DirectoryHandle* d, char* dirname){		//many part
 	dh->pos_in_dir = 0;
 	dh->pos_in_block = 0;
 	
-	//add it to the directory
-	int res = SimpleFS_addtodir(d, block);
-	check_errors(res , -1, "[SimpleFS_mkDir] Cannot add to dir.");
-
-	//save the new things on the dir's block
-	res = DiskDriver_writeBlock(d->sfs->disk, d->dcb, 0, sizeof(FirstDirectoryBlock), 0);
-	check_errors(res , -1, "[SimpleFS_mkDir] Cannot write the block.");
-
 
 	return dh;
 

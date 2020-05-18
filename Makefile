@@ -9,12 +9,14 @@ BINS= simplefs_test
 OBJS = simplefs.o\
 	bitmap.o\
 	disk_driver.o\
-	auxiliary.o
+	auxiliary.o\
+	bins.c
 
 HEADERS=bitmap.h\
 	disk_driver.h\
 	simplefs.h\
-	linked_list.h
+	linked_list.h\
+	bins.h
 
 %.o:	%.c $(HEADERS)
 	$(CC) $(CCOPTS) -c -o $@  $<

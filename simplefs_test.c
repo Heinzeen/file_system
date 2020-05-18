@@ -1,6 +1,7 @@
 #include "simplefs.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "bins.h"
 
 
 
@@ -33,7 +34,7 @@ int main(int agc, char** argv) {
 	printf("Current number of elements %d\n", rh->dcb->num_entries);
 
 	//2- create size files
-	int size = 10;
+	int size = 100;
 
 	FileHandle* f[size];
 	int i;
@@ -47,16 +48,31 @@ int main(int agc, char** argv) {
 
 	//3- mkdir
 	DirectoryHandle* fh = SimpleFS_mkDir(rh, "fagiolo");
-	
+	printf("Created dir named: %s\n", fh->dcb->fcb.name);
+
+	//4- ls("/");
+	my_ls(rh);
+
+	//add files to fagiolo
+	FileHandle* g[size];
+	for(i=1; i<size; i++){
+		char name [10];
+		sprintf(name, "g%d.txt", i);
+		name[8]=0;
+		g[i] = SimpleFS_createFile(fh, name);
+	}
+	my_ls(fh);
 
 
 	//close files
 	for(i=1; i<size; i++){
 		SimpleFS_close(f[i]);
+		SimpleFS_close(g[i]);
 	}
 
 	//close dir
 	SimpleFS_closedir(fh);
+	SimpleFS_closedir(rh);
 
 	//close f0
 	SimpleFS_close(f0);
