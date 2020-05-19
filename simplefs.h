@@ -105,7 +105,7 @@ DirectoryHandle* SimpleFS_open(SimpleFS* fs, DiskDriver* disk);
 // it also clears the bitmap of occupied blocks on the disk
 // the current_directory_block is cached in the SimpleFS struct
 // and set to the top level directory
-int SimpleFS_format(SimpleFS* fs);
+int SimpleFS_format(SimpleFS* fs, DiskDriver* disk, char* filename, int num_block);
 
 // creates an empty file in the directory d
 // returns null on error (file existing, no free blocks)

@@ -11,7 +11,7 @@ void my_ls(DirectoryHandle* dir){
 
 	int i=0, entries = 0;
 	//check the first block
-	while(entries < dir->dcb->num_entries){
+	while(entries < dir->dcb->num_entries){	//dir->dcb->num_entries
 		if(!dir->dcb->file_blocks[i]){
 			i++;
 			continue;

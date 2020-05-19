@@ -60,6 +60,7 @@ DirectoryHandle* SimpleFS_open(SimpleFS* fs, DiskDriver* disk){
 	rh->current_block = (BlockHeader*) rh->dcb;
 	rh->pos_in_dir = 0;
 	rh->pos_in_block = 0;
+
 	
 	return rh;
 }
@@ -144,13 +145,19 @@ int SimpleFS_addtodir(DirectoryHandle* d, int block){
 
 	//check if we have space in this block
 	if(d->dcb->room > 0){
+		//we have to iterate through the array to find a free spot
+		int spot = -1, i=0;
+		while(spot != 0){
+			spot = d->dcb->file_blocks[i];
+			i++;
+		}
 		//debugging print
 		char msg[64];
-		sprintf(msg, "Adding block %d to dir in block %d (main).", block, d->dcb->fcb.first_block);
+		sprintf(msg, "Adding block %d to dir in block %d (main), in spot %d.", block, d->dcb->fcb.first_block, i-1);
 		debug_print(msg);
 		d->dcb->num_entries += 1;
 		d->dcb->room -= 1;
-		d->dcb->file_blocks[d->dcb->num_entries - 1] = block;			//here
+		d->dcb->file_blocks[i - 1] = block;			//here
 		//save the things in memory
 		DiskDriver_writeBlock(d->sfs->disk, d->dcb, d->dcb->fcb.first_block, sizeof(FirstDirectoryBlock), 0);
 		return 0;
@@ -164,13 +171,19 @@ int SimpleFS_addtodir(DirectoryHandle* d, int block){
 		cnt += 1 ;
 		db = (DirectoryBlock*) DiskDriver_readBlock(d->sfs->disk, next, 0);
 		if(db->room > 0){
+			//we have to iterate through the array to find a free spot
+			int spot, i=0;
+			while(spot != 0){
+				spot = d->dcb->file_blocks[i];
+				i++;
+			}
 			//debugging print
 			char msg[64];
-			sprintf(msg, "Adding block %d to dir in block %d.", block, next);
+			sprintf(msg, "Adding block %d to dir in block %d, in spot %d.", block, next, i-1);
 			debug_print(msg);
 			db->num_entries += 1;
 			db->room -= 1;
-			db->file_blocks[db->num_entries - 1] = block;			//here
+			db->file_blocks[i - 1] = block;			//here
 			//save the things in memory
 			DiskDriver_writeBlock(d->sfs->disk, db, next, sizeof(DirectoryBlock), 0);
 			return 0;
@@ -183,7 +196,7 @@ int SimpleFS_addtodir(DirectoryHandle* d, int block){
 	int new_block = DiskDriver_getFreeBlock(d->sfs->disk, 0);
 	//debugging print
 	char msg[64];
-	sprintf(msg, "Adding block %d to dir in block %d.", block, new_block);
+	sprintf(msg, "Adding block %d to dir in block %d, in spot 0.", block, new_block);
 	debug_print(msg);
 
 	if(db == 0)		//then we didn't iterate
@@ -374,4 +387,28 @@ int SimpleFS_closedir(DirectoryHandle* d){
 	free(d);
 	return 0;
 
+}
+
+
+// creates the inital structures, the top level directory
+// has name "/" and its control block is in the first position
+// it also clears the bitmap of occupied blocks on the disk
+// the current_directory_block is cached in the SimpleFS struct
+// and set to the top level directory
+int SimpleFS_format(SimpleFS* fs, DiskDriver* disk0, char* filename, int num_block){
+	//checking
+	assert(fs && "[SimpleFS_format] File system not valid");
+	assert(disk0 && "[SimpleFS_format] Disk not valid");
+
+	//restore the disk
+	DiskDriver_init(disk0, "disk0.dat", 1024);
+	DiskDriver_close(disk0, 1);
+
+	//Reopen it
+	DiskDriver_open(disk0, "disk0.dat", 1024);
+
+	//Reinit the fs
+	SimpleFS_init(fs, disk0);
+
+	return 0;
 }
