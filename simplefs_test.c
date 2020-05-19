@@ -27,7 +27,7 @@ int main(int agc, char** argv) {
 
 
 	//2- create size files
-	int size = 10;
+	int size = 2;
 
 	FileHandle* f[size];
 	int i;
@@ -38,7 +38,9 @@ int main(int agc, char** argv) {
 		SimpleFS_createFile(rh, name);
 		f[i] = SimpleFS_openFile(rh, name);
 	}
-	SimpleFS_printFileData(f[size-1]);
+	printf("Pointer= %p\n", f[0]);
+		fflush(stdout);
+	SimpleFS_printFileData(f[0]);
 
 
 	//3- mkdir
@@ -49,9 +51,11 @@ int main(int agc, char** argv) {
 	//4- ls("/");
 	my_ls(rh);
 
+	int size2 = 100;
+
 	//add files to fagiolo
-	FileHandle* g[size];
-	for(i=0; i<size; i++){
+	FileHandle* g[size2];
+	for(i=0; i<size2; i++){
 		char name [10];
 		sprintf(name, "g%d.txt", i);
 		name[8]=0;
@@ -66,8 +70,16 @@ int main(int agc, char** argv) {
 	//close files
 	for(i=0; i<size; i++){
 		SimpleFS_close(f[i]);
+	}
+
+	for(i=0; i<size2; i++){
 		SimpleFS_close(g[i]);
 	}
+
+
+	//printing dir's blocks
+	SimpleFS_printDirData(rh);
+	SimpleFS_printDirData(fh);
 
 	//close dir
 	SimpleFS_closedir(fh);

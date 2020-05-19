@@ -8,6 +8,7 @@
 // header, occupies the first portion of each block in the disk
 // represents a chained list of blocks
 typedef struct {
+	int block_number;
 	int previous_block; // chained list (previous block)
 	int next_block;		 // chained list (next_block)
 	int block_in_file; // position in the file, if 0 we have a file control block
@@ -109,7 +110,7 @@ int SimpleFS_format(SimpleFS* fs);
 // creates an empty file in the directory d
 // returns null on error (file existing, no free blocks)
 // an empty file consists only of a block of type FirstBlock
-FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename);
+int SimpleFS_createFile(DirectoryHandle* d, const char* filename);
 
 // reads in the (preallocated) blocks array, the name of all files in a directory 
 int SimpleFS_readDir(char** names, DirectoryHandle* d);
@@ -120,6 +121,9 @@ FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename);
 
 //prints all the elements about a file
 void SimpleFS_printFileData(FileHandle* f);
+
+//prints all the elements of a dir
+void SimpleFS_printDirData(DirectoryHandle* d);
 
 // closes a file handle (destroyes it)
 int SimpleFS_close(FileHandle* f);
@@ -147,7 +151,10 @@ int SimpleFS_seek(FileHandle* f, int pos);
 // creates a new directory in the current one (stored in fs->current_directory_block)
 // 0 on success
 // -1 on error
-DirectoryHandle* SimpleFS_mkDir(DirectoryHandle* d, char* dirname);
+int SimpleFS_mkDir(DirectoryHandle* d, char* dirname);
+
+// open (if exist) a directory and return its handler
+DirectoryHandle* SimpleFS_openDir(DirectoryHandle* d, const char* dirname);
 
 //close a dir handler
 int SimpleFS_closedir(DirectoryHandle* d);

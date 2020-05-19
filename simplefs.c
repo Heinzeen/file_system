@@ -14,7 +14,7 @@ int SimpleFS_init(SimpleFS* fs, DiskDriver* disk){
 	fs->disk = disk;
 
 	//creating root directory
-	BlockHeader bh = {.previous_block = -1, .next_block = -1, .block_in_file = 0};
+	BlockHeader bh = {.block_number = 0, .previous_block = -1, .next_block = -1, .block_in_file = 0};
 	FileControlBlock fcb = {.first_block = 0, .directory_block = 0, .block_in_disk = 0, .name = "/", .size_in_bytes = 0, .size_in_blocks = 1, .is_dir = 1};
 
 	FirstDirectoryBlock fdb = {.header = bh, .fcb = fcb, .num_entries = 0, .room = (BLOCK_SIZE
@@ -68,7 +68,7 @@ DirectoryHandle* SimpleFS_open(SimpleFS* fs, DiskDriver* disk){
 //prints all the elements about a file
 void SimpleFS_printFileData(FileHandle* f){
 	//checking
-	assert(f && "[] File Handler not valid.\n");
+	assert(f && "[SimpleFS_printFileData] File Handler not valid.\n");
 
 	printf("======Printing a file=====\n");
 	printf("Name: %s.\n", f->fcb->fcb.name);
@@ -79,9 +79,30 @@ void SimpleFS_printFileData(FileHandle* f){
 	printf("Block in disk: %d.\n", f->fcb->fcb.block_in_disk);
 	printf("Size: %d.\n", f->fcb->fcb.size_in_bytes);
 	printf("Total blocks: %d.\n", f->fcb->fcb.size_in_blocks);
-	printf("Is dir: %d.\n", f->fcb->fcb.is_dir);
+	printf("Block %d, prev= %d, next= %d.\n", f->fcb->header.block_number, f->fcb->header.previous_block, f->fcb->header.next_block);
 	printf("==========================\n");
 
+}
+
+//prints all the elements about a dir, debugging purpose
+void SimpleFS_printDirData(DirectoryHandle* d){
+	//checking
+	assert(d && "[SimpleFS_printDirData] Dir Handler not valid.\n");
+
+	printf("======Printing a Directory=====\n");
+	if(d->directory != 0)
+		printf("Parent: %s.\n", d->directory->fcb.name);
+	else
+		printf("Seems like we are in root (or we have a problem).\n");
+	printf("Printing all the blocks now:\n");
+	printf("Block %d, prev= %d, next= %d, num_entries= %d, room= %d.\n", d->dcb->header.block_number, d->dcb->header.previous_block, d->dcb->header.next_block, d->dcb->num_entries, d->dcb->room);
+	int next = d->dcb->header.next_block;
+	while(next != -1){
+		DirectoryBlock* bh = (DirectoryBlock*) DiskDriver_readBlock(d->sfs->disk, next, 0);
+		printf("Block %d, prev= %d, next= %d, num_entries= %d, room= %d.\n", bh->header.block_number , bh->header.previous_block, bh->header.next_block, bh->num_entries, bh->room);
+		next = bh->header.next_block;
+	}
+	printf("==========================\n");
 }
 
 
@@ -93,7 +114,7 @@ void* SimpleFS_checkname(DirectoryHandle* d, const char* filename){
 
 	//the first block is different
 	int n = d->dcb->num_entries, i;
-	for(i=1; i<=n; i++){
+	for(i=0; i<n; i++){
 		ffb = (FirstFileBlock*) DiskDriver_readBlock(d->sfs->disk, d->dcb->file_blocks[i], 0);
 		if(!strcmp(ffb->fcb.name, filename))
 			return ffb;
@@ -104,7 +125,7 @@ void* SimpleFS_checkname(DirectoryHandle* d, const char* filename){
 	while(next != -1){
 		DirectoryBlock * dirblock = (DirectoryBlock*) DiskDriver_readBlock(d->sfs->disk, next, 0);
 		int n = dirblock->num_entries;
-			for(i=1; i<=n; i++){
+			for(i=0; i<n; i++){
 			ffb = (FirstFileBlock*) DiskDriver_readBlock(d->sfs->disk, dirblock->file_blocks[i], 0);
 			if(!strcmp(ffb->fcb.name, filename))
 					return ffb;
@@ -125,34 +146,33 @@ int SimpleFS_addtodir(DirectoryHandle* d, int block){
 	if(d->dcb->room > 0){
 		//debugging print
 		char msg[64];
-		sprintf(msg, "Adding block %d to block %d (main).", block, d->dcb->fcb.first_block);
+		sprintf(msg, "Adding block %d to dir in block %d (main).", block, d->dcb->fcb.first_block);
 		debug_print(msg);
 		d->dcb->num_entries += 1;
 		d->dcb->room -= 1;
-		d->dcb->file_blocks[d->dcb->num_entries] = block;
+		d->dcb->file_blocks[d->dcb->num_entries - 1] = block;			//here
 		//save the things in memory
-		//printf("====%d====\n", d->dcb->fcb.first_block);
-		//DiskDriver_writeBlock(d->sfs->disk, d->dcb, d->dcb->fcb.first_block, sizeof(FirstDirectoryBlock), 0);
+		DiskDriver_writeBlock(d->sfs->disk, d->dcb, d->dcb->fcb.first_block, sizeof(FirstDirectoryBlock), 0);
 		return 0;
 	}
 
-	int next = d->dcb->header.next_block;
+	int next = d->dcb->header.next_block, prev = d->dcb->fcb.first_block;
 	DirectoryBlock * db = 0;
 	int cnt = 0;
 	while(next != -1){
-
+		prev = next;		//save the state of prev, in case we need later
 		cnt += 1 ;
 		db = (DirectoryBlock*) DiskDriver_readBlock(d->sfs->disk, next, 0);
 		if(db->room > 0){
 			//debugging print
-			char msg[32];
-			sprintf(msg, "Adding block %d to block %d.", block, next);
+			char msg[64];
+			sprintf(msg, "Adding block %d to dir in block %d.", block, next);
 			debug_print(msg);
 			db->num_entries += 1;
 			db->room -= 1;
-			db->file_blocks[db->num_entries] = block;
+			db->file_blocks[db->num_entries - 1] = block;			//here
 			//save the things in memory
-			//DiskDriver_writeBlock(d->sfs->disk, db, next, sizeof(DirectoryBlock), 0);
+			DiskDriver_writeBlock(d->sfs->disk, db, next, sizeof(DirectoryBlock), 0);
 			return 0;
 		}
 		next = db->header.next_block;
@@ -162,8 +182,8 @@ int SimpleFS_addtodir(DirectoryHandle* d, int block){
 	//create another block and add it to the list
 	int new_block = DiskDriver_getFreeBlock(d->sfs->disk, 0);
 	//debugging print
-	char msg[32];
-	sprintf(msg, "Adding block %d to block %d.", block, new_block);
+	char msg[64];
+	sprintf(msg, "Adding block %d to dir in block %d.", block, new_block);
 	debug_print(msg);
 
 	if(db == 0)		//then we didn't iterate
@@ -173,12 +193,12 @@ int SimpleFS_addtodir(DirectoryHandle* d, int block){
 		db->header.next_block = new_block;
 
 	//initialize the block
-	BlockHeader header = {.next_block = -1, .previous_block = 0xff, .block_in_file = cnt};
+	BlockHeader header = {.block_number = new_block, .next_block = -1, .previous_block = prev, .block_in_file = cnt};
 	int room = (BLOCK_SIZE-sizeof(BlockHeader)-2*sizeof(int))/sizeof(int) - 1 ;
 	int entries = 1;
 
 	DirectoryBlock new_db = {. header=header, .room=room, .num_entries = entries};
-	new_db.file_blocks[entries] = block;
+	new_db.file_blocks[entries - 1] = block;					//here
 	//write on disk
 	DiskDriver_writeBlock(d->sfs->disk, &new_db, new_block, sizeof(DirectoryBlock), 0);
 	return 0;
@@ -211,7 +231,7 @@ int SimpleFS_createFile(DirectoryHandle* d, const char* filename){
 	}
 
 	//create the block header
-	BlockHeader bh = {.previous_block = -1, .next_block = -1, .block_in_file = 0};
+	BlockHeader bh = {.block_number = block, .previous_block = -1, .next_block = -1, .block_in_file = 0};
 
 	//create fcb
 	FileControlBlock fcb = {.first_block = block, .directory_block = d->dcb->fcb.first_block, .block_in_disk = block, .size_in_bytes = 0, .size_in_blocks = 1, .is_dir = 0};
@@ -228,7 +248,7 @@ int SimpleFS_createFile(DirectoryHandle* d, const char* filename){
 	check_errors(res , -1, "[SimpleFS_createFile] Cannot add to dir.");
 
 	//save the new things on the dir's block
-	res = DiskDriver_writeBlock(d->sfs->disk, d->dcb, d->dcb->fcb.first_block, sizeof(FirstDirectoryBlock), 0);
+	//res = DiskDriver_writeBlock(d->sfs->disk, d->dcb, d->dcb->fcb.first_block, sizeof(FirstDirectoryBlock), 0);
 	check_errors(res , -1, "[SimpleFS_createFile] Cannot write the block.");
 
 	return 0;
@@ -286,7 +306,7 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname){		//many parts are like cr
 	}
 
 	//create the block header
-	BlockHeader bh = {.previous_block = -1, .next_block = -1, .block_in_file = 0};
+	BlockHeader bh = {.block_number = block, .previous_block = -1, .next_block = -1, .block_in_file = 0};
 
 	//create fcb
 	FileControlBlock fcb = {.first_block = block, .directory_block = d->dcb->fcb.first_block, .block_in_disk = block, .size_in_bytes = 0, .size_in_blocks = 1, .is_dir = 1};
