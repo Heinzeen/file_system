@@ -400,7 +400,7 @@ int SimpleFS_remove(DirectoryHandle* d, char* filename){
 
 	FileHandle* fh = SimpleFS_checkname(d, filename);
 	if(!fh){
-		debug_print("File not present.");
+		debug_print("File or dir not present.");
 		return -1;
 	}
 

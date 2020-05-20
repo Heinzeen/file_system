@@ -85,7 +85,7 @@ void print_help(void){
 	printf("info\t\tprint the info about a file.\n");
 	printf("ls\t\tshow the content of the actual dir.\n");
 	printf("mkdir\t\tmake a dir.\n");
-	printf("rm\t\tremove a file.\n");
+	printf("rm\t\tremove a file or a dir.\n");
 	printf("touch\t\tcreate a file.\n");
 }
 
@@ -128,7 +128,7 @@ void rm(char* name){
 	int res = SimpleFS_remove(current, name);
 
 	if(res)
-		printf("Cannot remove the file.");
+		printf("Cannot remove the file or the directory.");
 
 }
 
