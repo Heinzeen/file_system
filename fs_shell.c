@@ -131,7 +131,7 @@ void rm(char* name){
 	int res = SimpleFS_remove(current, name);
 
 	if(res)
-		printf("Cannot remove the file or the directory.");
+		printf("Cannot remove the file or the directory.\n");
 
 }
 

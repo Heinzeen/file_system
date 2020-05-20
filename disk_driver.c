@@ -19,7 +19,6 @@ void Init_data(DiskDriver* disk){
 		missing -= res;
 	}while(missing>0);
 
-	//TODO maybe change this?
 	char temp[disk->bitmap->num_bits * BLOCK_SIZE];
 	memset(temp, 0, disk->bitmap->num_bits * BLOCK_SIZE);
 	//write the blocks (all 0 for now)
@@ -92,7 +91,6 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
 
 }
 
-//TODO check if the disk is "good"
 
 //open the disk driver, load everything from the file
 void DiskDriver_open(DiskDriver* disk, const char* filename, int num_blocks){

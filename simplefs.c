@@ -390,10 +390,17 @@ int SimpleFS_remove(DirectoryHandle* d, char* filename){
 	assert(d != 0 && "[SimpleFS_remove] Directory handler not valid.\n");
 	assert(filename != 0 && "[SimpleFS_remove] Filename not valid.\n");
 
-	FileHandle* fh = SimpleFS_checkname(d, filename);
+	FirstDirectoryBlock* fh = SimpleFS_checkname(d, filename);
 	if(!fh){
 		debug_print("File or dir not present.");
 		return -1;
+	}
+
+	if(fh->fcb.is_dir){
+		if(fh->num_entries > 0){
+			printf("Cannot remove a non-empty dir, use rmdir instead.\n");
+			return -1;
+		}
 	}
 
 	//iterate through the directory's block looking for that file
@@ -617,11 +624,11 @@ int SimpleFS_format(SimpleFS* fs, DiskDriver* disk0, char* filename, int num_blo
 	assert(disk0 && "[SimpleFS_format] Disk not valid");
 
 	//restore the disk
-	DiskDriver_init(disk0, "disk0.dat", 1024);
+	DiskDriver_init(disk0, filename, num_block);
 	DiskDriver_close(disk0, 1);
 
 	//Reopen it
-	DiskDriver_open(disk0, "disk0.dat", 1024);
+	DiskDriver_open(disk0, filename, num_block);
 
 	//Reinit the fs
 	SimpleFS_init(fs, disk0);
