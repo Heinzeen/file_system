@@ -75,12 +75,17 @@ void SimpleFS_printFileData(FileHandle* f){
 	printf("Name: %s.\n", f->fcb->fcb.name);
 	printf("Directory: %s.\n", f->directory->fcb.name);
 	printf("First block: %d.\n", f->fcb->fcb.first_block);
-	printf("Next block: %d.\n", f->fcb->header.next_block);
-	printf("Dir first block: %d.\n", f->directory->fcb.first_block);
-	printf("Block in disk: %d.\n", f->fcb->fcb.block_in_disk);
-	printf("Size: %d.\n", f->fcb->fcb.size_in_bytes);
 	printf("Total blocks: %d.\n", f->fcb->fcb.size_in_blocks);
-	printf("Block %d, prev= %d, next= %d.\n", f->fcb->header.block_number, f->fcb->header.previous_block, f->fcb->header.next_block);
+	printf("Printing all the blocks now:\n");
+	printf("Block %d, prev= %d, next= %d.\n", f->fcb->header.block_number,  f->fcb->header.previous_block,  f->fcb->header.next_block);
+	int next =  f->fcb->header.next_block;
+	while(next != -1){
+		FileBlock* fb = (FileBlock*) DiskDriver_readBlock(f->sfs->disk, next, 0);
+		printf("Block %d, prev= %d, next= %d.\n", fb->header.block_number , fb->header.previous_block, fb->header.next_block);
+		next = fb->header.next_block;
+	}
+	printf("Dir first block: %d.\n", f->directory->fcb.first_block);
+	printf("Size : %d B.\n", f->fcb->fcb.size_in_bytes);
 	printf("==========================\n");
 
 }
@@ -451,6 +456,116 @@ int SimpleFS_remove(DirectoryHandle* d, char* filename){
 	return 0;
 }
 
+
+// writes in the file, at current position for size bytes stored in data
+// overwriting and allocating new space if necessary
+// returns the number of bytes written
+int SimpleFS_write(FileHandle* fh, char* data, int size){
+	assert(fh && "[SimpleFS_write] File handler not valid");
+	assert(data && "[SimpleFS_write] Data pointer not valid");
+	assert(size>0 && "[SimpleFS_write] Size not valid");
+
+	//printf("ffb=%p, current=%p, pos=%d, bytes=%d, blocks=%d\n", fh->fcb, fh->current_block, fh->pos_in_file, fh->fcb->fcb.size_in_bytes, fh->fcb->fcb.size_in_blocks);
+
+	int data_in_first_block = BLOCK_SIZE-sizeof(FileControlBlock) - sizeof(BlockHeader);
+	int head_in_first_block = sizeof(FileControlBlock) + sizeof(BlockHeader);
+	int data_in_other_block = BLOCK_SIZE-sizeof(BlockHeader);
+	int head_in_other_block = sizeof(BlockHeader);
+	int target_block;	//find the block to write in
+	int current_block = fh->fcb->header.block_number;
+	int pos_in_block;
+	int written = 0;
+	int left_in_block;
+	int padding;
+	BlockHeader* blockhead = (BlockHeader*) fh->fcb;
+	if(fh->pos_in_file > data_in_first_block)
+		target_block = (fh->pos_in_file - data_in_first_block) / data_in_other_block + 1;
+
+	else
+		target_block = 0;
+
+	pos_in_block = fh->pos_in_file;		//relative position in the block
+
+	//reach the target block
+	int i;
+	for(i=0; i<target_block; i++){
+		if(i==0)
+			pos_in_block -= data_in_first_block;
+		else
+			pos_in_block -= data_in_other_block;
+		current_block = blockhead->next_block;
+		blockhead = (BlockHeader*) DiskDriver_readBlock(fh->sfs->disk, current_block, 0);
+	}
+
+	//we have the block number (current_block) and the block pointer (blockhead)
+
+	while(size>0){				//TODO add multi-blocks
+		if(i == 0){				//if i==0 we are in the first block, things are different here
+			left_in_block = data_in_first_block - pos_in_block;
+			padding = head_in_first_block;
+		}
+		else{
+			left_in_block = data_in_other_block - pos_in_block;
+			padding = head_in_other_block;
+		}
+		if(size < left_in_block){
+			//update the size (only if we need it)
+			if(fh->fcb->fcb.size_in_bytes < written)
+				fh->fcb->fcb.size_in_bytes = written;
+			DiskDriver_writeBlock(fh->sfs->disk, data + written, current_block, size, pos_in_block + padding);
+			written += size;
+			size = 0;
+		}
+		else if(size > left_in_block){
+			//update the size (only if we need it)
+			if(fh->fcb->fcb.size_in_bytes < written)
+				fh->fcb->fcb.size_in_bytes = written;
+			DiskDriver_writeBlock(fh->sfs->disk, data + written, current_block, left_in_block, pos_in_block + padding);
+			written += left_in_block;
+			size -= left_in_block;
+		}
+
+		//update the size (only if we need it)
+		if(fh->fcb->fcb.size_in_bytes < written)
+			fh->fcb->fcb.size_in_bytes = written;
+
+		//advance in blocks, create a new one if needed
+		if(size !=0 && blockhead->next_block == -1){						//cortocicruitazione, size == 0 ==> si esce e basta
+
+			//create another block and add it to the list
+			int new_block = DiskDriver_getFreeBlock(fh->sfs->disk, 0);
+			//debugging print
+			char msg[64];
+			sprintf(msg, "Adding block %d to file in block %d, in spot 0.", new_block, blockhead->block_number);		//get new block
+			debug_print(msg);
+
+			if(i == 0)		//then we didn't iterate
+				fh->fcb->header.next_block = new_block;					//add it to the headers
+				
+			else
+				blockhead->next_block = new_block;
+
+			//initialize the block
+			BlockHeader header = {.block_number = new_block, .next_block = -1, .previous_block = blockhead->block_number, .block_in_file = i};
+			
+
+			DirectoryBlock new_fb = {.header=header};
+			//write on disk
+			DiskDriver_writeBlock(fh->sfs->disk, &new_fb, new_block, sizeof(FileBlock), 0);
+
+			//update the fcb
+			fh->fcb->fcb.size_in_blocks += 1;
+		}
+		if(size!=0){
+			current_block = blockhead->next_block;
+			blockhead = (BlockHeader*) DiskDriver_readBlock(fh->sfs->disk, current_block, 0);
+			i += 1;
+		}
+
+	}
+
+	return written;
+}
 
 // creates the inital structures, the top level directory
 // has name "/" and its control block is in the first position

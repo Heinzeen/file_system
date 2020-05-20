@@ -211,7 +211,6 @@ char* DiskDriver_readBlock(DiskDriver* disk, int block_num, int block_offset){
 // returns -1 if operation not possible
 int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num, int count, int block_offset){		//TODO is there any case i cannot do that? (for the -1 retval)
 
-	
 	//checking
 	assert(disk && "[DiskDriver_writeBlock] Disk pointer not valid.");
 	assert(block_num>=0 && "[DiskDriver_writeBlock] Invalid block num");

@@ -142,6 +142,44 @@ void touch(char* name){
 	SimpleFS_createFile(current, name);
 }
 
+void write_file(char* name){
+	//take away the \n
+	int len = strlen(name);
+	name[len-1] = 0;
+
+	//check if the file exists
+	if(!SimpleFS_checkname(current, name)){
+		printf("File doesn't exist!\n");
+		return;
+	}
+
+	//ask for the parameters
+	int n;
+	char c;
+	printf("Number of bytes: ");
+	scanf("%d", &n);
+	scanf("%c", &c);		//the first scanf doesn't read the \n, so the fgets will read it and exit unless i do this
+
+	//check
+	if(n<=0){
+		printf("Please, insert a positive, not-null number.\n");
+		return;
+	}
+
+	char data[n];
+	memset(data, 0, n);		//set everything to zero
+
+	printf("Insert the data: ");
+	fgets(data, n, stdin);
+
+	//open the file
+	FileHandle* fh = SimpleFS_openFile(current, name);
+
+	SimpleFS_write(fh, data, n);
+
+	//close it
+	SimpleFS_close(fh);
+}
 
 int main(int agc, char** argv) {
 	//Be always kind with those who have to examine you <3
@@ -153,7 +191,7 @@ int main(int agc, char** argv) {
 
 	char msg[64];
 	while(1){
-		printf("%s >>", current->dcb->fcb.name);
+		printf("SimpleFS:%s $ ", current->dcb->fcb.name);
 		fgets(msg, 64, stdin);
 
 		//help
@@ -193,6 +231,9 @@ int main(int agc, char** argv) {
 		else if(!strncmp(msg, "rm", 2))
 			rm(msg+3);
 
+		else if(!strncmp(msg, "write", 5))
+			write_file(msg+6);
+
 		//you need help?
 		else
 			printf("Command unknown, type \"help\" for help.\n");
@@ -203,3 +244,4 @@ int main(int agc, char** argv) {
 	return 0;
 
 }
+//01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789

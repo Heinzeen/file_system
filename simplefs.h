@@ -116,6 +116,8 @@ int SimpleFS_createFile(DirectoryHandle* d, const char* filename);
 // reads in the (preallocated) blocks array, the name of all files in a directory 
 int SimpleFS_readDir(char** names, DirectoryHandle* d);
 
+//check if a file exists in a directory
+void* SimpleFS_checkname(DirectoryHandle* d, const char* filename);
 
 // opens a file in the	directory d. The file should be exisiting
 FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename);
@@ -132,7 +134,7 @@ int SimpleFS_close(FileHandle* f);
 // writes in the file, at current position for size bytes stored in data
 // overwriting and allocating new space if necessary
 // returns the number of bytes written
-int SimpleFS_write(FileHandle* f, void* data, int size);
+int SimpleFS_write(FileHandle* f, char* data, int size);
 
 // writes in the file, at current position size bytes stored in data
 // overwriting and allocating new space if necessary
