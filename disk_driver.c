@@ -1,24 +1,6 @@
 #include "disk_driver.h"
 #include "simplefs.h"
 
-/*
-// this is stored in the 1st block of the disk
-typedef struct {
-	int num_blocks;
-	int bitmap_blocks;	// how many blocks in the bitmap
-	int bitmap_entries;	// how many bytes are needed to store the bitmap
-	
-	int free_blocks		// free blocks
-	int first_free_block;	// first block index
-} DiskHeader; 
-
-typedef struct {
-	DiskHeader* header; // mmapped
-	BitMap* bitmap;	// mmapped (bitmap)
-	int fd; // for us
-} DiskDriver;
-
-*/
 
 
 //init the data when we open a new disk
@@ -73,7 +55,7 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
 	DiskHeader* dh = malloc(sizeof(DiskHeader));
 	assert(dh && "[DiskDriver_init] Cannot allocate disk header.");
 
-	dh->num_blocks = num_blocks;					//TODO do we need the bitmap_blocks field?
+	dh->num_blocks = num_blocks;
 	dh->bitmap_entries = num_blocks;
 	dh->free_blocks = num_blocks; 					//in the start, every block is a free block
 	dh->first_free_block = 0;
@@ -138,7 +120,7 @@ void DiskDriver_open(DiskDriver* disk, const char* filename, int num_blocks){
 	DiskHeader* dh = malloc(sizeof(DiskHeader));
 	assert(dh && "[DiskDriver_init] Cannot allocate disk header.");
 
-	dh->num_blocks = num_blocks;						//TODO do we need the bitmap_blocks field?
+	dh->num_blocks = num_blocks;
 	dh->bitmap_entries = num_blocks;
 	dh->free_blocks = BitMap_analyze(bitmap, num_blocks);		//in the start, every block is a free block
 	dh->first_free_block = 0;
@@ -249,7 +231,6 @@ void DiskDriver_flush(DiskDriver* disk){
 	}
 }
 
-//TODO do I have to do anything else?
 // frees a block in position block_num, and alters the bitmap accordingly
 // returns -1 if operation not possible
 int DiskDriver_freeBlock(DiskDriver* disk, int block_num){
@@ -290,7 +271,7 @@ int DiskDriver_getFreeBlock(DiskDriver* disk, int start){
 }
 
 
-// TODO we get an offset for random reason (+0x200)
+
 void* getBlockAddress(DiskDriver* disk, int block_num){
 	//we need to do some math because we can only set an offsett which is a multiple of sysconf(_SC_PAGE_SIZE)
 	int page_len = sysconf(_SC_PAGE_SIZE);

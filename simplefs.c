@@ -3,7 +3,6 @@
 
 
 
-//TODO maybe we should not ret -1 but close the program
 // initializes a file system on an already made disk
 // returns -1 in error, 0 otherwise
 int SimpleFS_init(SimpleFS* fs, DiskDriver* disk){
@@ -20,21 +19,13 @@ int SimpleFS_init(SimpleFS* fs, DiskDriver* disk){
 	FirstDirectoryBlock fdb = {.header = bh, .fcb = fcb, .num_entries = 0, .room = (BLOCK_SIZE
 											-sizeof(BlockHeader)
 											-sizeof(FileControlBlock)
-											-2*sizeof(int))/sizeof(int)};		//TODO add the file_blocks
+											-2*sizeof(int))/sizeof(int)};
 	
 	//write it into the block 0
 	int res = DiskDriver_writeBlock(disk, &fdb, 0, sizeof(FirstDirectoryBlock), 0);
 	check_errors(res , -1, "[SimpleFS_init] Cannot write the block.");
 
 	return 0;
-}
-
-//TODO check for integrity (disk)
-int SimpleFS_check(SimpleFS* fs){
-
-
-	return 0;
-
 }
 
 
@@ -46,9 +37,6 @@ DirectoryHandle* SimpleFS_open(SimpleFS* fs, DiskDriver* disk){
 	assert(disk && "[SimpleFS_init] Disk not valid.");
 
 	fs->disk = disk;
-
-	if(SimpleFS_check(fs))
-		return 0;
 
 	//create the root handle
 	DirectoryHandle* rh = malloc(sizeof(DirectoryHandle));
@@ -142,7 +130,6 @@ void* SimpleFS_checkname(DirectoryHandle* d, const char* filename){
 	return 0;
 }
 
-//TODO increment size_in_blocks
 
 //int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num, int count, int block_offset){
 
@@ -333,7 +320,7 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname){		//many parts are like cr
 	FirstDirectoryBlock fdb = {.header = bh, .fcb = fcb, .num_entries = 0, .room = (BLOCK_SIZE
 											-sizeof(BlockHeader)
 											-sizeof(FileControlBlock)
-											-2*sizeof(int))/sizeof(int)};		//TODO add the file_block
+											-2*sizeof(int))/sizeof(int)};
 
 	//write on disk
 	DiskDriver_writeBlock(d->sfs->disk, &fdb, block, sizeof(FirstDirectoryBlock), 0);
@@ -445,12 +432,11 @@ int SimpleFS_remove(DirectoryHandle* d, char* filename){
 		next = dirblock->header.next_block;
 	}
 
-
 	//free all the blocks, again, iterate
-	//TODO check if this will work with multiple block's file
 	while(block_num != -1){
+		FileBlock* fb = (FileBlock*) DiskDriver_readBlock(d->sfs->disk, block_num, 0);
 		DiskDriver_freeBlock(d->sfs->disk, block_num);
-		block_num = ffb->header.next_block;
+		block_num = fb->header.next_block;
 	}
 
 	return 0;
@@ -499,7 +485,7 @@ int SimpleFS_write(FileHandle* fh, char* data, int size){
 
 	//we have the block number (current_block) and the block pointer (blockhead)
 
-	while(size>0){				//TODO add multi-blocks
+	while(size>0){	
 		if(i == 0){				//if i==0 we are in the first block, things are different here
 			left_in_block = data_in_first_block - pos_in_block;
 			padding = head_in_first_block;
@@ -566,6 +552,59 @@ int SimpleFS_write(FileHandle* fh, char* data, int size){
 
 	return written;
 }
+
+// returns the number of bytes read and place them into data
+int SimpleFS_read(FileHandle* fh, char* data, int size){
+	//checking
+	assert(fh && "[SimpleFS_read] File handler not valid");
+	assert(data && "[SimpleFS_read] Data pointer not valid");
+	assert(size>0 && "[SimpleFS_read] Size not valid");
+
+	//just iterate through the blocks and memcpy the stuff
+	int read = 0;
+	int data_in_first = BLOCK_SIZE-sizeof(FileControlBlock) - sizeof(BlockHeader);
+	int data_in_other = BLOCK_SIZE-sizeof(BlockHeader);
+	//BlockHeader* current =  (BlockHeader*) fh->fcb;
+	int next;
+	int file_size = fh->fcb->fcb.size_in_bytes;
+	int read_cnt;
+
+
+	//read the first block
+	if(file_size < size)
+		size = file_size;
+
+	if(size < data_in_first)
+		read_cnt = size;
+	else
+		read_cnt = data_in_first;
+
+	memcpy(data, fh->fcb->data, read_cnt);
+	read += read_cnt;
+
+	size -= read_cnt;
+
+	next = fh->fcb->header.next_block;
+	while(next != -1){
+		FileBlock* fb = (FileBlock*) DiskDriver_readBlock(fh->sfs->disk, next, 0);
+
+		if(size < data_in_other)
+			read_cnt = size;
+		else
+			read_cnt = data_in_other;
+		memcpy(data + read, fb->data, read_cnt);
+
+		size -= read_cnt;
+		read += read_cnt;
+		next = fb->header.next_block;
+	}
+
+	data[read] = 0;
+
+	return read;
+
+}
+
 
 // creates the inital structures, the top level directory
 // has name "/" and its control block is in the first position

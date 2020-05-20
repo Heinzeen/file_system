@@ -85,10 +85,13 @@ void print_help(void){
 	printf("info\t\tprint the info about a file.\n");
 	printf("ls\t\tshow the content of the actual dir.\n");
 	printf("mkdir\t\tmake a dir.\n");
+	printf("read filename\t read filename; you will be asked for the dimension.\n");
 	printf("rm\t\tremove a file or a dir.\n");
 	printf("touch\t\tcreate a file.\n");
+	printf("write filename\t write filename; you will be asked for the dimension.\n");
 }
 
+//TODO add cd ..
 void cd(char* name){
 
 	//take away the \n
@@ -142,6 +145,44 @@ void touch(char* name){
 	SimpleFS_createFile(current, name);
 }
 
+void read_file(char* name){
+	//take away the \n
+	int len = strlen(name);
+	name[len-1] = 0;
+
+	//check if the file exists
+	if(!SimpleFS_checkname(current, name)){
+		printf("File doesn't exist!\n");
+		return;
+	}
+
+	//ask for the parameters
+	int n;
+	char c;
+	printf("Number of bytes: ");
+	scanf("%d", &n);
+	scanf("%c", &c);		//the first scanf doesn't read the \n, so the fgets will read it and exit unless i do this
+
+	//check
+	if(n<=0){
+		printf("Please, insert a positive, not-null number.\n");
+		return;
+	}
+
+	char data[n+1];
+
+	//open the file
+	FileHandle* fh = SimpleFS_openFile(current, name);
+
+	SimpleFS_read(fh, data, n);
+
+	printf("%s\n", data);
+
+	//close it
+	SimpleFS_close(fh);
+
+}
+
 void write_file(char* name){
 	//take away the \n
 	int len = strlen(name);
@@ -166,12 +207,58 @@ void write_file(char* name){
 		return;
 	}
 
-	char data[n];
+	char data[n+1];
 	memset(data, 0, n);		//set everything to zero
 
 	printf("Insert the data: ");
-	fgets(data, n, stdin);
+	fgets(data, n+1, stdin);
 
+	//open the file
+	FileHandle* fh = SimpleFS_openFile(current, name);
+
+	SimpleFS_write(fh, data, n);
+
+	//close it
+	SimpleFS_close(fh);
+}
+
+//generate n "random" bytes
+void rand_gen(char* data, int n){
+	int i;
+	for(i=0;i<n;i++){
+		data[i]=32+rand()%96;		//generate them from 32 to 128 (i don't want random null bytes or other strange things inside the files)
+	}
+}
+void write_file_rand(char* name){
+	//take away the \n
+	int len = strlen(name);
+	name[len-1] = 0;
+
+
+	//check if the file exists
+	if(!SimpleFS_checkname(current, name)){
+		printf("File doesn't exist!\n");
+		return;
+	}
+
+	//ask for the parameters
+	int n;
+	char c;
+	printf("Number of bytes: ");
+	scanf("%d", &n);
+	scanf("%c", &c);		//the first scanf doesn't read the \n, so the fgets will read it and exit unless i do this
+
+	//check
+	if(n<=0){
+		printf("Please, insert a positive, not-null number.\n");
+		return;
+	}
+
+	char data[n+1];
+	memset(data, 0, n);		//set everything to zero
+
+	//generate
+	rand_gen(data, n);
 	//open the file
 	FileHandle* fh = SimpleFS_openFile(current, name);
 
@@ -228,11 +315,20 @@ int main(int agc, char** argv) {
 		else if(!strncmp(msg, "touch", 5))
 			touch(msg+6);
 
+		else if(!strncmp(msg, "read", 4))
+			read_file(msg+5);
+
 		else if(!strncmp(msg, "rm", 2))
 			rm(msg+3);
 
+		else if(!strncmp(msg, "writerand", 9))
+			write_file_rand(msg+10);
+
 		else if(!strncmp(msg, "write", 5))
 			write_file(msg+6);
+
+		else if(!strncmp(msg, "writerand", 9))
+			write_file_rand(msg+10);
 
 		//you need help?
 		else
@@ -244,4 +340,3 @@ int main(int agc, char** argv) {
 	return 0;
 
 }
-//01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
