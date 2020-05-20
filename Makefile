@@ -4,7 +4,7 @@ CC=gcc
 AR=ar
 
 
-BINS= simplefs_test
+BINS= simplefs_test fs_shell
 
 OBJS = simplefs.o\
 	bitmap.o\
@@ -27,6 +27,9 @@ HEADERS=bitmap.h\
 all:	$(BINS) 
 
 so_game: simplefs_test.c $(OBJS) 
+	$(CC) $(CCOPTS)  -o $@ $^ $(LIBS)
+
+fs_shell: fs_shell.c $(OBJS) 
 	$(CC) $(CCOPTS)  -o $@ $^ $(LIBS)
 
 clean:

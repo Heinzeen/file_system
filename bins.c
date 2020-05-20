@@ -7,7 +7,8 @@ void my_ls(DirectoryHandle* dir){
 	//checking
 	assert(dir != 0 && "[my_ls] Dir handler not valid.\n");
 
-	printf("Name\tDir\n");
+	printf("Printing content of %s\n", dir->dcb->fcb.name);
+	printf("Name\t\t\tDir\n");
 
 	int i=0, entries = 0;
 	//check the first block
@@ -17,7 +18,7 @@ void my_ls(DirectoryHandle* dir){
 			continue;
 		}
 		FirstFileBlock* ffb = (FirstFileBlock*) DiskDriver_readBlock(dir->sfs->disk, dir->dcb->file_blocks[i], 0);
-		printf("%s\t%d\n", ffb->fcb.name, ffb->fcb.is_dir);
+		printf("%s\t\t\t%d\n", ffb->fcb.name, ffb->fcb.is_dir);
 		i++;
 		entries++;
 	}

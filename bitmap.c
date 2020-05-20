@@ -1,16 +1,6 @@
 #include "bitmap.h"
 
-/*
-typedef struct{
-  int num_bits;
-  char* entries;
-}  BitMap;
 
-typedef struct {
-  int entry_num;
-  char bit_num;
-} BitMapEntryKey;
-*/
 
 
 // initialize a bitmap

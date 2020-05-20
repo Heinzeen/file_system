@@ -67,10 +67,10 @@ typedef struct {
 
 
 
+struct DirStatus;
 
-	
 typedef struct {
-	DiskDriver* disk;;
+	DiskDriver* disk;
 	// add more fields if needed
 } SimpleFS;
 
@@ -91,6 +91,7 @@ typedef struct {
 	int pos_in_dir;			// absolute position of the cursor in the directory
 	int pos_in_block;		// relative position of the cursor in the block
 } DirectoryHandle;
+
 
 // initializes a file system on an already made disk
 // returns a handle to the top level directory stored in the first block
@@ -161,8 +162,7 @@ int SimpleFS_closedir(DirectoryHandle* d);
 
 // removes the file in the current directory
 // returns -1 on failure 0 on success
-// if a directory, it removes recursively all contained files
-int SimpleFS_remove(SimpleFS* fs, char* filename);
+int SimpleFS_remove(DirectoryHandle* dh, char* filename);
 
 
 	

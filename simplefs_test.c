@@ -12,10 +12,10 @@ int main(int agc, char** argv) {
 	
 
 	//start the test with same disk
-	DiskDriver_open(disk0, "disk0.dat", 1024);
+	//DiskDriver_open(disk0, "disk0.dat", 1024);
 
 	//start the test formatting everything
-	//SimpleFS_format(sfs, disk0, "disk0.dat", 1024);
+	SimpleFS_format(sfs, disk0, "disk0.dat", 1024);
 
 
 
@@ -45,7 +45,7 @@ int main(int agc, char** argv) {
 	//3- mkdir
 	SimpleFS_mkDir(rh, "fagiolo");
 	fh = SimpleFS_openDir(rh, "fagiolo");
-	printf("Created dir named: %s\n", fh->dcb->fcb.name);
+	//printf("Created dir named: %s\n", fh->dcb->fcb.name);
 
 	//4- ls("/");
 	my_ls(rh);
@@ -65,16 +65,17 @@ int main(int agc, char** argv) {
 	//ls "fagiolo"
 	my_ls(fh);
 
-
 	//close files
-	for(i=0; i<size; i++){
-		SimpleFS_close(f[i]);
-	}
 
 	for(i=0; i<size2; i++){
 		SimpleFS_close(g[i]);
 	}
 
+
+
+	for(i=0; i<size; i++){
+		SimpleFS_close(f[i]);
+	}
 //=================
 	//printing dir's blocks
 	SimpleFS_printDirData(rh);

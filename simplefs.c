@@ -390,6 +390,68 @@ int SimpleFS_closedir(DirectoryHandle* d){
 }
 
 
+
+// removes the file in the current directory
+// returns -1 on failure 0 on success
+int SimpleFS_remove(DirectoryHandle* d, char* filename){
+	//checking
+	assert(d != 0 && "[SimpleFS_remove] Directory handler not valid.\n");
+	assert(filename != 0 && "[SimpleFS_remove] Filename not valid.\n");
+
+	FileHandle* fh = SimpleFS_checkname(d, filename);
+	if(!fh){
+		debug_print("File not present.");
+		return -1;
+	}
+
+	//iterate through the directory's block looking for that file
+	FirstFileBlock* ffb;		//the part that we're using of this structure is the same for dirs
+					//so we don't need to change anything for them
+	int block_num;
+	//the first block is different
+	int n = d->dcb->num_entries, i;
+	for(i=0; i<n; i++){
+		ffb = (FirstFileBlock*) DiskDriver_readBlock(d->sfs->disk, d->dcb->file_blocks[i], 0);
+		if(!strcmp(ffb->fcb.name, filename)){
+			d->dcb->file_blocks[i] = 0;
+			d->dcb->room += 1;
+			d->dcb->num_entries -= 1;
+			block_num = ffb->header.block_number;
+			break;
+		}
+			
+	}
+
+	//if there is more blocks, iterate through them
+	int next = d->dcb->header.next_block;
+	while(next != -1){
+		DirectoryBlock * dirblock = (DirectoryBlock*) DiskDriver_readBlock(d->sfs->disk, next, 0);
+		int n = dirblock->num_entries;
+			for(i=0; i<n; i++){
+			ffb = (FirstFileBlock*) DiskDriver_readBlock(d->sfs->disk, dirblock->file_blocks[i], 0);
+			if(!strcmp(ffb->fcb.name, filename)){
+				dirblock->file_blocks[i] = 0;
+				d->dcb->room += 1;
+				d->dcb->num_entries -= 1;
+				block_num = ffb->header.block_number;
+				break;
+			}
+		}
+		next = dirblock->header.next_block;
+	}
+
+
+	//free all the blocks, again, iterate
+	//TODO check if this will work with multiple block's file
+	while(block_num != -1){
+		DiskDriver_freeBlock(d->sfs->disk, block_num);
+		block_num = ffb->header.next_block;
+	}
+
+	return 0;
+}
+
+
 // creates the inital structures, the top level directory
 // has name "/" and its control block is in the first position
 // it also clears the bitmap of occupied blocks on the disk
