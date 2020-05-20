@@ -85,10 +85,11 @@ void print_help(void){
 	printf("info\t\tprint the info about a file.\n");
 	printf("ls\t\tshow the content of the actual dir.\n");
 	printf("mkdir\t\tmake a dir.\n");
-	printf("read filename\t read filename; you will be asked for the dimension.\n");
+	printf("read filename\tread filename; you will be asked for the dimension.\n");
 	printf("rm\t\tremove a file or a dir.\n");
 	printf("touch\t\tcreate a file.\n");
-	printf("write filename\t write filename; you will be asked for the dimension.\n");
+	printf("write filename\twrite filename; you will be asked for the dimension.\n");
+	printf("writerand filename\twrite \"random\" bytes in a file; you will be asked for the dimension.\n");
 }
 
 //TODO add cd ..
@@ -327,8 +328,6 @@ int main(int agc, char** argv) {
 		else if(!strncmp(msg, "write", 5))
 			write_file(msg+6);
 
-		else if(!strncmp(msg, "writerand", 9))
-			write_file_rand(msg+10);
 
 		//you need help?
 		else

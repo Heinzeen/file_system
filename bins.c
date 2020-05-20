@@ -28,17 +28,17 @@ void my_ls(DirectoryHandle* dir){
 		return;
 
 	//if we're here, the dir is composed of more blocks, check them out!
-	DirectoryBlock* db = (DirectoryBlock*) DiskDriver_readBlock(dir->sfs->disk, next, 0);
-	i=0;
-	entries = 0;
 	while(next != -1){		//the same cycle we used before, adapted with right types
+		DirectoryBlock* db = (DirectoryBlock*) DiskDriver_readBlock(dir->sfs->disk, next, 0);
+		i=0;
+		entries = 0;
 		while(entries < db->num_entries ){
 			if(!db->file_blocks[i]){
 				i++;
 				continue;
 			}
 			FirstFileBlock* ffb = (FirstFileBlock*) DiskDriver_readBlock(dir->sfs->disk, db->file_blocks[i], 0);
-			printf("%s\t%d\n", ffb->fcb.name, ffb->fcb.is_dir);
+			printf("%s\t\t%d\n", ffb->fcb.name, ffb->fcb.is_dir);
 			i++;
 			entries++;
 		}

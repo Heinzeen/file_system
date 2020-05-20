@@ -163,8 +163,8 @@ int SimpleFS_closedir(DirectoryHandle* d);
 
 // removes the file in the current directory
 // returns -1 on failure 0 on success
+int SimpleFS_removedir(DirectoryHandle* dh, char* dirname);
+
+// removes the file in the current directory
+// returns -1 on failure 0 on success
 int SimpleFS_remove(DirectoryHandle* dh, char* filename);
-
-
-	
-

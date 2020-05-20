@@ -107,8 +107,10 @@ void* SimpleFS_checkname(DirectoryHandle* d, const char* filename){
 					//so we don't need to change anything for them
 
 	//the first block is different
-	int n = d->dcb->num_entries, i;
+	int n = d->dcb->num_entries + d->dcb->room, i;
 	for(i=0; i<n; i++){
+		if(d->dcb->file_blocks[i] == 0)
+			continue;
 		ffb = (FirstFileBlock*) DiskDriver_readBlock(d->sfs->disk, d->dcb->file_blocks[i], 0);
 		if(!strcmp(ffb->fcb.name, filename))
 			return ffb;
@@ -118,10 +120,12 @@ void* SimpleFS_checkname(DirectoryHandle* d, const char* filename){
 	int next = d->dcb->header.next_block;
 	while(next != -1){
 		DirectoryBlock * dirblock = (DirectoryBlock*) DiskDriver_readBlock(d->sfs->disk, next, 0);
-		int n = dirblock->num_entries;
+		int n = dirblock->num_entries + dirblock->room;
 			for(i=0; i<n; i++){
-			ffb = (FirstFileBlock*) DiskDriver_readBlock(d->sfs->disk, dirblock->file_blocks[i], 0);
-			if(!strcmp(ffb->fcb.name, filename))
+				if(dirblock->file_blocks[i] == 0)
+					continue;
+				ffb = (FirstFileBlock*) DiskDriver_readBlock(d->sfs->disk, dirblock->file_blocks[i], 0);
+				if(!strcmp(ffb->fcb.name, filename))
 					return ffb;
 		}
 		next = dirblock->header.next_block;
@@ -166,7 +170,7 @@ int SimpleFS_addtodir(DirectoryHandle* d, int block){
 			//we have to iterate through the array to find a free spot
 			int spot, i=0;
 			while(spot != 0){
-				spot = d->dcb->file_blocks[i];
+				spot = db->file_blocks[i];
 				i++;
 			}
 			//debugging print
@@ -253,7 +257,7 @@ int SimpleFS_createFile(DirectoryHandle* d, const char* filename){
 	check_errors(res , -1, "[SimpleFS_createFile] Cannot add to dir.");
 
 	//save the new things on the dir's block
-	//res = DiskDriver_writeBlock(d->sfs->disk, d->dcb, d->dcb->fcb.first_block, sizeof(FirstDirectoryBlock), 0);
+	res = DiskDriver_writeBlock(d->sfs->disk, d->dcb, d->dcb->fcb.first_block, sizeof(FirstDirectoryBlock), 0);
 	check_errors(res , -1, "[SimpleFS_createFile] Cannot write the block.");
 
 	return 0;
@@ -330,7 +334,7 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname){		//many parts are like cr
 	check_errors(res , -1, "[SimpleFS_mkDir] Cannot add to dir.");
 
 	//save the new things on the dir's block
-	res = DiskDriver_writeBlock(d->sfs->disk, d->dcb, 0, sizeof(FirstDirectoryBlock), 0);
+	res = DiskDriver_writeBlock(d->sfs->disk, d->dcb, d->dcb->header.block_number, sizeof(FirstDirectoryBlock), 0);
 	check_errors(res , -1, "[SimpleFS_mkDir] Cannot write the block.");
 
 	return 0;
@@ -391,14 +395,16 @@ int SimpleFS_remove(DirectoryHandle* d, char* filename){
 	assert(filename != 0 && "[SimpleFS_remove] Filename not valid.\n");
 
 	FirstDirectoryBlock* fh = SimpleFS_checkname(d, filename);
+
+
 	if(!fh){
-		debug_print("File or dir not present.");
+		debug_print("File or dir not present:.");
 		return -1;
 	}
 
 	if(fh->fcb.is_dir){
 		if(fh->num_entries > 0){
-			printf("Cannot remove a non-empty dir, use rmdir instead.\n");
+			printf("Cannot remove a non-empty dir.\n");
 			return -1;
 		}
 	}
@@ -408,8 +414,10 @@ int SimpleFS_remove(DirectoryHandle* d, char* filename){
 					//so we don't need to change anything for them
 	int block_num;
 	//the first block is different
-	int n = d->dcb->num_entries, i;
+	int n = d->dcb->num_entries + d->dcb->room, i;
 	for(i=0; i<n; i++){
+		if(d->dcb->file_blocks[i] == 0)
+			continue;
 		ffb = (FirstFileBlock*) DiskDriver_readBlock(d->sfs->disk, d->dcb->file_blocks[i], 0);
 		if(!strcmp(ffb->fcb.name, filename)){
 			d->dcb->file_blocks[i] = 0;
@@ -425,22 +433,24 @@ int SimpleFS_remove(DirectoryHandle* d, char* filename){
 	int next = d->dcb->header.next_block;
 	while(next != -1){
 		DirectoryBlock * dirblock = (DirectoryBlock*) DiskDriver_readBlock(d->sfs->disk, next, 0);
-		int n = dirblock->num_entries;
+		int n = dirblock->num_entries + dirblock->room;
 			for(i=0; i<n; i++){
-			ffb = (FirstFileBlock*) DiskDriver_readBlock(d->sfs->disk, dirblock->file_blocks[i], 0);
-			if(!strcmp(ffb->fcb.name, filename)){
-				dirblock->file_blocks[i] = 0;
-				d->dcb->room += 1;
-				d->dcb->num_entries -= 1;
-				block_num = ffb->header.block_number;
-				break;
+				if(!dirblock->file_blocks[i])
+					continue;
+				ffb = (FirstFileBlock*) DiskDriver_readBlock(d->sfs->disk, dirblock->file_blocks[i], 0);
+				if(!strcmp(ffb->fcb.name, filename)){
+					dirblock->file_blocks[i] = 0;
+					dirblock->room += 1;
+					dirblock->num_entries -= 1;
+					block_num = ffb->header.block_number;
+					break;
 			}
 		}
 		next = dirblock->header.next_block;
 	}
 
 	//free all the blocks, again, iterate
-	while(block_num != -1){
+	while(next != -1){
 		FileBlock* fb = (FileBlock*) DiskDriver_readBlock(d->sfs->disk, block_num, 0);
 		DiskDriver_freeBlock(d->sfs->disk, block_num);
 		block_num = fb->header.next_block;
@@ -448,6 +458,7 @@ int SimpleFS_remove(DirectoryHandle* d, char* filename){
 
 	return 0;
 }
+
 
 
 // writes in the file, at current position for size bytes stored in data

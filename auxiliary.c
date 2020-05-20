@@ -1,6 +1,6 @@
 #include "auxiliary.h"
 
-void debug_print(char* msg){	//TODO we can add some condition
+void debug_print(char* msg){
 	printf("%s\n", msg);
 }
 
