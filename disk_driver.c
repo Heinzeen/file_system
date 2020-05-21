@@ -248,7 +248,7 @@ int DiskDriver_freeBlock(DiskDriver* disk, int block_num){
 // or -1 if there is no block from that position
 int DiskDriver_getFreeBlock(DiskDriver* disk, int start){
 	//checking
-	assert(disk && "[DiskDriver_freeBlock] Disk pointer not valid.");
+	assert(disk && "[DiskDriver_getFreeBlock] Disk pointer not valid.");
 
 	//iterate untill we find a block
 	int i;

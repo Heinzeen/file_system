@@ -450,10 +450,11 @@ int SimpleFS_remove(DirectoryHandle* d, char* filename){
 	}
 
 	//free all the blocks, again, iterate
+	next = ffb->header.block_number;
 	while(next != -1){
-		FileBlock* fb = (FileBlock*) DiskDriver_readBlock(d->sfs->disk, block_num, 0);
-		DiskDriver_freeBlock(d->sfs->disk, block_num);
-		block_num = fb->header.next_block;
+		FileBlock* fb = (FileBlock*) DiskDriver_readBlock(d->sfs->disk, next, 0);
+		DiskDriver_freeBlock(d->sfs->disk, next);
+		next = fb->header.next_block;
 	}
 
 	return 0;
