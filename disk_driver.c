@@ -13,7 +13,7 @@ void Init_data(DiskDriver* disk){
 	//write the bitmap	
 	int res;
 	int missing = disk->bitmap->num_bits;
-	do{			//don't think about int at the moment TODO
+	do{
 		res=write(disk->fd, disk->bitmap->entries, missing);
 		check_errors(res, -1, "[Init_data] Cannot write on disk.");
 		missing -= res;
@@ -23,7 +23,7 @@ void Init_data(DiskDriver* disk){
 	memset(temp, 0, disk->bitmap->num_bits * BLOCK_SIZE);
 	//write the blocks (all 0 for now)
 	missing = disk->bitmap->num_bits * BLOCK_SIZE;
-	do{			//don't think about int at the moment TODO
+	do{
 		res=write(disk->fd, temp, missing);
 		check_errors(res, -1, "[Init_data] Cannot write on disk.");
 		missing -= res;
@@ -170,7 +170,6 @@ void DiskDriver_close(DiskDriver* disk, int n){
 }
 
 
-//TODO check the method I use to take the offset for the mmap, it won't work with some page_len and BLOCK_SIZEs
 // reads the block in position block_num (map it into the process)
 char* DiskDriver_readBlock(DiskDriver* disk, int block_num, int block_offset){
 	
@@ -186,10 +185,9 @@ char* DiskDriver_readBlock(DiskDriver* disk, int block_num, int block_offset){
 
 }
 
-//TODO check the method I use to take the offset for the mmap, it won't work with some page_len and BLOCK_SIZEs
 // writes a block in position block_num, and alters the bitmap accordingly
 // returns -1 if operation not possible
-int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num, int count, int block_offset){		//TODO is there any case i cannot do that? (for the -1 retval)
+int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num, int count, int block_offset){
 
 	//checking
 	assert(disk && "[DiskDriver_writeBlock] Disk pointer not valid.");
@@ -274,11 +272,13 @@ void* getBlockAddress(DiskDriver* disk, int block_num){
 	//we need to do some math because we can only set an offsett which is a multiple of sysconf(_SC_PAGE_SIZE)
 	int page_len = sysconf(_SC_PAGE_SIZE);
 	
+	//printf("Looking for %d\n", block_num);
 
 	//check if we already mapped that portion of memory
 	LoadedBlock* temp = disk->blockhead->first;
 	while(temp){
 		if(block_num >= temp->block_start && block_num <= temp->block_end){
+			//printf("Found in [%d, %d]\n", temp->block_start, temp->block_end);
 			if(temp->block_start == 0)
 				return temp->memory + (block_num - temp->block_start) * BLOCK_SIZE + disk->header->num_blocks;
 
@@ -297,7 +297,7 @@ void* getBlockAddress(DiskDriver* disk, int block_num){
 	lb->next = 0;
 	lb->block_start = (block_num + (disk->header->num_blocks / BLOCK_SIZE)) / (page_len / BLOCK_SIZE) * (page_len / BLOCK_SIZE);
 	if(lb->block_start != 0)
-		lb->block_start -= (disk->header->num_blocks / BLOCK_SIZE);			//TODO non funziona con bitmap molto grandi (oltre 4096, esce fuori da page size)
+		lb->block_start -= (disk->header->num_blocks / BLOCK_SIZE);			//Bitmap < 4096, bitmap % BLOCK_SIZE == 0
 	lb->block_end = (block_num + (disk->header->num_blocks / BLOCK_SIZE)) / (page_len / BLOCK_SIZE) * (page_len/ BLOCK_SIZE) + (page_len / BLOCK_SIZE) - 1 - (disk->header->num_blocks / BLOCK_SIZE);
 
 	int offset;
@@ -320,6 +320,7 @@ void* getBlockAddress(DiskDriver* disk, int block_num){
 	//if it is the first one
 	temp = disk->blockhead->first;
 	if(temp == 0){
+		//printf("Added first[%d, %d]\n", lb->block_start, lb->block_end);
 		disk->blockhead->first = lb;
 		disk->blockhead->last = lb;
 		return dest + offset;
@@ -334,6 +335,7 @@ void* getBlockAddress(DiskDriver* disk, int block_num){
 				disk->blockhead->first = lb;
 			else
 				temp->prev->next = lb;
+			//printf("Added middle[%d, %d]\n", lb->block_start, lb->block_end);
 			temp->prev = lb;
 			return dest + offset;
 		}
@@ -345,6 +347,7 @@ void* getBlockAddress(DiskDriver* disk, int block_num){
 	lb->prev = temp;
 	lb->next = 0;
 	disk->blockhead->last = lb;
+	//printf("Added last[%d, %d]\n", lb->block_start, lb->block_end);
 	return dest + offset;
 
 

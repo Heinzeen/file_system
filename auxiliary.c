@@ -1,7 +1,7 @@
 #include "auxiliary.h"
 
 void debug_print(char* msg){
-	printf("%s\n", msg);
+	//printf("%s\n", msg);
 }
 
 
