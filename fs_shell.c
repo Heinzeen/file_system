@@ -164,15 +164,19 @@ void read_file(char* name){
 	scanf("%c", &c);		//the first scanf doesn't read the \n, so the fgets will read it and exit unless i do this
 
 	//check
-	if(n<=0){
-		printf("Please, insert a positive, not-null number.\n");
+	if(n<0){
+		printf("Please, insert a positive n.\n");
 		return;
 	}
 
-	char data[n+1];
+
 
 	//open the file
 	FileHandle* fh = SimpleFS_openFile(current, name);
+
+	n = fh->fcb->fcb.size_in_bytes;
+
+	char data[n+1];
 
 	SimpleFS_read(fh, data, n);
 
@@ -211,7 +215,7 @@ void write_file(char* name){
 	memset(data, 0, n);		//set everything to zero
 
 	printf("Insert the data: ");
-	fgets(data, n+1, stdin);
+	fgets(data, n+1, stdin);	//while inserting, try not to let the string terminator in
 
 	//open the file
 	FileHandle* fh = SimpleFS_openFile(current, name);
