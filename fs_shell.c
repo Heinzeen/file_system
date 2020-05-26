@@ -92,7 +92,6 @@ void print_help(void){
 	printf("writerand filename\twrite \"random\" bytes in a file; you will be asked for the dimension.\n");
 }
 
-//TODO add cd ..
 void cd(char* name){
 
 	//take away the \n
