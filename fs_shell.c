@@ -61,6 +61,12 @@ void info(char* name){
 	int len = strlen(name);
 	name[len-1] = 0;
 
+	//check if we want root
+	if(!strncmp(name, "/", 1)){
+		SimpleFS_printDirData(rh);
+		return;
+	}
+
 	//take the handler
 	FileHandle* temp = SimpleFS_openFile(current, name);
 	if(temp == 0){

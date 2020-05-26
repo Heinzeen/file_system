@@ -140,17 +140,10 @@ int SimpleFS_write(FileHandle* f, char* data, int size);
 // returns the number of bytes read
 int SimpleFS_read(FileHandle* f, char* data, int size);
 
-// returns the number of bytes read (moving the current pointer to pos)
-// returns pos on success
-// -1 on error (file too short)
-int SimpleFS_seek(FileHandle* f, int pos);
 
-// seeks for a directory in d. If dirname is equal to ".." it goes one level up
-// 0 on success, negative value on error
 // it does side effect on the provided handle
  int SimpleFS_changeDir(DirectoryHandle* d, char* dirname);
 
-// creates a new directory in the current one (stored in fs->current_directory_block)
 // 0 on success
 // -1 on error
 int SimpleFS_mkDir(DirectoryHandle* d, char* dirname);

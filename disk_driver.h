@@ -8,6 +8,7 @@
 #include <string.h>
 #include <assert.h>
 #include <sys/mman.h>
+#include <errno.h>
 
 
 #define BLOCK_SIZE 512

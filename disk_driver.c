@@ -8,14 +8,18 @@ void Init_data(DiskDriver* disk){
 	
 	//checking
 	assert(disk && "[Init_data] Disk pointer not valid.");
-	
+
+	//for both the writes we check errno
 
 	//write the bitmap	
 	int res;
 	int missing = disk->bitmap->num_bits;
 	do{
 		res=write(disk->fd, disk->bitmap->entries, missing);
-		check_errors(res, -1, "[Init_data] Cannot write on disk.");
+		if(res == -1 && errno != EINTR){
+			printf("Error while writing new disk, aborting.\n");
+			exit(1);
+		}
 		missing -= res;
 	}while(missing>0);
 
@@ -25,7 +29,10 @@ void Init_data(DiskDriver* disk){
 	missing = disk->bitmap->num_bits * BLOCK_SIZE;
 	do{
 		res=write(disk->fd, temp, missing);
-		check_errors(res, -1, "[Init_data] Cannot write on disk.");
+		if(res == -1 && errno != EINTR){
+			printf("Error while writing new disk, aborting.\n");
+			exit(1);
+		}
 		missing -= res;
 
 	}while(missing>0);
@@ -237,8 +244,11 @@ int DiskDriver_freeBlock(DiskDriver* disk, int block_num){
 
 
 	//change the bitmap and add 1 to the number of free items
-	disk->bitmap->entries[block_num] = 0;
-	disk->header->free_blocks += 1;
+	if(disk->bitmap->entries[block_num] != 0){	//just in case we are making a double free
+		disk->bitmap->entries[block_num] = 0;
+		disk->header->free_blocks += 1;
+	}
+
 	return 0;
 }
 
@@ -269,6 +279,7 @@ int DiskDriver_getFreeBlock(DiskDriver* disk, int start){
 
 
 void* getBlockAddress(DiskDriver* disk, int block_num){
+	assert(disk && "[getBlockAddress] Disk not valid");
 	//we need to do some math because we can only set an offsett which is a multiple of sysconf(_SC_PAGE_SIZE)
 	int page_len = sysconf(_SC_PAGE_SIZE);
 	

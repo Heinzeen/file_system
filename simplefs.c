@@ -33,15 +33,16 @@ int SimpleFS_init(SimpleFS* fs, DiskDriver* disk){
 // returns 0 if everything is fine, and if the fs is good
 DirectoryHandle* SimpleFS_open(SimpleFS* fs, DiskDriver* disk){
 	//checking
-	assert(fs && "[SimpleFS_init] Fs not valid.");
-	assert(disk && "[SimpleFS_init] Disk not valid.");
+	assert(fs && "[SimpleFS_open] Fs not valid.");
+	assert(disk && "[SimpleFS_open] Disk not valid.");
 
 	fs->disk = disk;
 
 	//create the root handle
 	DirectoryHandle* rh = malloc(sizeof(DirectoryHandle));
-	assert(rh && "[SimpleFS_init] Cannot allocate rh.");
+	assert(rh && "[SimpleFS_open] Cannot allocate rh.");
 
+	//setting values
 	rh->sfs = fs;
 	rh->dcb = (FirstDirectoryBlock*) DiskDriver_readBlock(disk, 0, 0);
 	rh->directory = 0;
@@ -59,6 +60,7 @@ void SimpleFS_printFileData(FileHandle* f){
 	//checking
 	assert(f && "[SimpleFS_printFileData] File Handler not valid.\n");
 
+	//just printing stuff
 	printf("======Printing a file=====\n");
 	printf("Name: %s.\n", f->fcb->fcb.name);
 	printf("Directory: %s.\n", f->directory->fcb.name);
@@ -83,6 +85,7 @@ void SimpleFS_printDirData(DirectoryHandle* d){
 	//checking
 	assert(d && "[SimpleFS_printDirData] Dir Handler not valid.\n");
 
+	//just printing stuff
 	printf("======Printing a Directory=====\n");
 	if(d->directory != 0)
 		printf("Parent: %s.\n", d->directory->fcb.name);
@@ -102,6 +105,8 @@ void SimpleFS_printDirData(DirectoryHandle* d){
 
 // check for every dir's block if that name already exists
 void* SimpleFS_checkname(DirectoryHandle* d, const char* filename){
+	assert(d && "[SimpleFS_checkname] Directory handler not valid");
+	assert(filename && "[SimpleFS_checkname] filename not valid");
 
 	FirstFileBlock* ffb;		//the part that we're using of this structure is the same for dirs
 					//so we don't need to change anything for them
@@ -138,6 +143,7 @@ void* SimpleFS_checkname(DirectoryHandle* d, const char* filename){
 //int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num, int count, int block_offset){
 
 int SimpleFS_addtodir(DirectoryHandle* d, int block){
+	assert(d && "[SimpleFS_addtodir] Directory handler not valid");
 
 	//check if we have space in this block
 	if(d->dcb->room > 0){
@@ -449,6 +455,10 @@ int SimpleFS_remove(DirectoryHandle* d, char* filename){
 		next = dirblock->header.next_block;
 	}
 
+	//set to 0 the bitmap block
+	DiskDriver_freeBlock(d->sfs->disk, block_num);
+
+
 	//free all the blocks, again, iterate
 	next = ffb->header.block_number;
 	while(next != -1){
@@ -459,7 +469,6 @@ int SimpleFS_remove(DirectoryHandle* d, char* filename){
 
 	return 0;
 }
-
 
 
 // writes in the file, at current position for size bytes stored in data

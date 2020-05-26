@@ -24,7 +24,7 @@ void BitMap_free(BitMap* bmap){
 
 
 	//freeing the memory
-	assert(bmap->entries && "[DiskDriver_close] Disk header value is not valid.");
+	assert(bmap->entries && "[BitMap_free] Bmap entries value is not valid.");
 	free(bmap->entries);
 
 }
