@@ -111,6 +111,11 @@ void* SimpleFS_checkname(DirectoryHandle* d, const char* filename){
 	FirstFileBlock* ffb;		//the part that we're using of this structure is the same for dirs
 					//so we don't need to change anything for them
 
+
+
+
+
+
 	//the first block is different
 	int n = d->dcb->num_entries + d->dcb->room, i;
 	for(i=0; i<n; i++){
@@ -120,6 +125,7 @@ void* SimpleFS_checkname(DirectoryHandle* d, const char* filename){
 		if(!strcmp(ffb->fcb.name, filename))
 			return ffb;
 	}
+
 
 	//if there is more blocks, iterate through them
 	int next = d->dcb->header.next_block;
@@ -302,21 +308,23 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname){		//many parts are like cr
 	assert(d && "[SimpleFS_mkDir] Dir not valid.");
 	assert(dirname && "[SimpleFS_mkDir] Dirname not valid.");
 
+
 	//debugging prints
 	debug_print("Creating new directory.");
 	debug_print((char*)dirname);		//casted to avoid warning with the const
+
+
+	//check if there is no other files with the same name
+	if(SimpleFS_checkname(d, dirname)){
+		printf("A directory with that name already exists!\n");
+		return 1;
+	}
 
 
 	//ask for a new block
 	int block = DiskDriver_getFreeBlock(d->sfs->disk, 0);
 	if(block == -1){
 		printf("Cannot allocate a new block.\n");
-		return 1;
-	}
-
-	//check if there is no other files with the same name
-	if(SimpleFS_checkname(d, dirname)){
-		printf("A directory with that name already exists!\n");
 		return 1;
 	}
 
@@ -352,12 +360,14 @@ DirectoryHandle* SimpleFS_openDir(DirectoryHandle* d, const char* dirname){
 	assert(d && "[SimpleFS_openDir] Dir not valid.");
 	assert(dirname && "[SimpleFS_openDir] Dirname not valid.");
 
+
 	FirstDirectoryBlock* dir = (FirstDirectoryBlock*) SimpleFS_checkname(d, dirname);
 
 	if(!dir)	//file not found
 		return 0;
 
-
+	if(!dir->fcb.is_dir)
+		return 0;
 	//create the directory handler
 	DirectoryHandle* dh = malloc(sizeof(FileHandle));
 	dh->sfs = d->sfs;
@@ -366,7 +376,7 @@ DirectoryHandle* SimpleFS_openDir(DirectoryHandle* d, const char* dirname){
 	dh->current_block = (BlockHeader*)DiskDriver_readBlock(d->sfs->disk, dir->fcb.first_block, 0);
 	dh->pos_in_dir = 0;
 	dh->pos_in_block = 0;
-	
+
 
 	return dh;
 
@@ -587,6 +597,7 @@ int SimpleFS_read(FileHandle* fh, char* data, int size){
 	assert(fh && "[SimpleFS_read] File handler not valid");
 	assert(data && "[SimpleFS_read] Data pointer not valid");
 	assert(size>0 && "[SimpleFS_read] Size not valid");
+
 
 	//just iterate through the blocks and memcpy the stuff
 	int read = 0;

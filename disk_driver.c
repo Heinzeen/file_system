@@ -185,7 +185,6 @@ char* DiskDriver_readBlock(DiskDriver* disk, int block_num, int block_offset){
 	assert(block_num>=0 && "[DiskDriver_readBlock] Invalid block num");
 	assert(block_offset <= BLOCK_SIZE && block_offset >= 0 && "[DiskDriver_readBlock] Invalid count or block_offset.");
 
-
 	char *dest = getBlockAddress(disk, block_num);
 
 	return dest + block_offset;

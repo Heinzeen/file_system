@@ -99,7 +99,6 @@ void print_help(void){
 }
 
 void cd(char* name){
-
 	//take away the \n
 	int len = strlen(name);
 	name[len-1] = 0;
@@ -111,9 +110,12 @@ void cd(char* name){
 		return;
 	}
 
+
+	DirectoryHandle* new = SimpleFS_openDir(current, name);
+
 	if(current != rh)
 		SimpleFS_closedir(current);
-	DirectoryHandle* new = SimpleFS_openDir(current, name);
+
 	if(new)
 		current = new;
 	else
@@ -180,7 +182,8 @@ void read_file(char* name){
 	//open the file
 	FileHandle* fh = SimpleFS_openFile(current, name);
 
-	n = fh->fcb->fcb.size_in_bytes;
+	if(n==0)
+		n = fh->fcb->fcb.size_in_bytes;
 
 	char data[n+1];
 
@@ -285,6 +288,7 @@ int main(int agc, char** argv) {
 
 	//load the fs
 	load_sfs();
+
 
 	char msg[64];
 	while(1){
