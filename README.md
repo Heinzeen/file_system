@@ -1,2 +1,2 @@
 # file_system
-File system project for the Operative System's course.
+File system project for the Operating System's course.
